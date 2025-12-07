@@ -52,6 +52,10 @@
             justify-content: center; align-items: center; flex-direction: column;
         }
         #error-display { display: none; position: fixed; bottom: 20px; right: 20px; max-width: 400px; z-index: 2100; }
+        
+        /* Helper Links */
+        .helper-link { cursor: pointer; font-size: 0.85rem; text-decoration: none; margin-right: 8px; }
+        .helper-link:hover { text-decoration: underline; }
     </style>
 </head>
 <body>
@@ -88,23 +92,30 @@
                 <div class="card-body p-3">
                     <div class="row g-3 align-items-end">
                         
-                        <!-- Collection Search & Select -->
+                        <!-- Search & Collection Area -->
                         <div class="col-md-5">
-                            <label class="form-label fw-bold small text-muted mb-1">Select Collection</label>
-                            <input type="text" id="collectionSearch" class="form-control form-control-sm mb-1" placeholder="Search collection name..." onkeyup="filterCollections()">
+                            <label class="form-label fw-bold small text-muted mb-1">Global Search / Collection</label>
+                            
+                            <!-- Search Input Group -->
+                            <div class="input-group input-group-sm mb-1">
+                                <input type="text" id="storeSearch" class="form-control" placeholder="Search Title, SKU, or Type...">
+                                <button class="btn btn-primary" type="button" onclick="searchStore()">Search Store</button>
+                            </div>
+
+                            <!-- Collection Select -->
                             <select id="collectionSelect" class="form-select form-select-sm" onchange="loadProducts()">
-                                <option value="" selected disabled>Loading collections...</option>
+                                <option value="" selected disabled>-- Or Select Collection --</option>
                             </select>
                         </div>
 
-                        <!-- Sort Options (UPDATED) -->
+                        <!-- Sort Options (NEW) -->
                         <div class="col-md-2">
                             <label class="form-label fw-bold small text-muted mb-1">Sort Products</label>
                             <select id="sortSelect" class="form-select form-select-sm" onchange="sortAndRender()">
+                                <option value="newest">Date: New to Old</option>
+                                <option value="oldest">Date: Old to New</option>
                                 <option value="active_first">Status: Active First</option>
                                 <option value="draft_first">Status: Draft First</option>
-                                <option value="az">Title A-Z</option>
-                                <option value="za">Title Z-A</option>
                             </select>
                         </div>
 
@@ -116,8 +127,18 @@
                         </div>
                     </div>
                     
-                    <div class="text-end mt-2 fw-bold text-muted small">
-                        Total Products: <span id="productCount" class="text-dark">0</span>
+                    <div class="d-flex justify-content-between mt-2 align-items-center">
+                         <!-- Selection Helpers -->
+                        <div class="small">
+                            <strong>Quick Select: </strong>
+                            <span class="helper-link text-primary" onclick="selectByStatus('all')">All</span>
+                            <span class="helper-link text-success" onclick="selectByStatus('active')">All Active</span>
+                            <span class="helper-link text-secondary" onclick="selectByStatus('draft')">All Draft</span>
+                            <span class="helper-link text-danger" onclick="selectByStatus('none')">None</span>
+                        </div>
+                        <div class="fw-bold text-muted small">
+                            Total Products: <span id="productCount" class="text-dark">0</span>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -138,7 +159,7 @@
                         </tr>
                     </thead>
                     <tbody id="productTableBody">
-                        <tr><td colspan="6" class="text-center py-5 text-muted">Select a collection to start.</td></tr>
+                        <tr><td colspan="6" class="text-center py-5 text-muted">Select a collection or Search to start.</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -169,22 +190,27 @@
             fetchCollections();
         };
 
-        // --- 1. Collection Logic ---
-        function filterCollections() {
-            const search = document.getElementById('collectionSearch').value.toLowerCase();
-            const select = document.getElementById('collectionSelect');
-            select.innerHTML = '<option value="" disabled>-- Select Collection --</option>';
+        // --- 1. Search Logic ---
+        async function searchStore() {
+            const query = document.getElementById('storeSearch').value;
+            if(!query) return alert("Please enter a Title, SKU or Type to search.");
 
-            const filtered = globalCollections.filter(c => c.title.toLowerCase().includes(search));
+            // Reset Collection Dropdown
+            document.getElementById('collectionSelect').value = "";
             
-            filtered.forEach(c => {
-                const opt = document.createElement('option');
-                opt.value = c.id;
-                opt.text = c.title;
-                select.appendChild(opt);
-            });
-
-            if(filtered.length === 0) select.innerHTML += '<option disabled>No collection found</option>';
+            showLoader(true, "Searching Global Store...");
+            document.getElementById('productTableBody').innerHTML = '<tr><td colspan="6" class="text-center py-5">Searching entire store... This may take time.</td></tr>';
+            
+            const result = await callAPI('searchStore', { query: query });
+            
+            if (result.success && result.products) {
+                globalProducts = result.products;
+                sortAndRender(); 
+            } else {
+                document.getElementById('productTableBody').innerHTML = '<tr><td colspan="6" class="text-center text-danger">No products found for this search.</td></tr>';
+                document.getElementById('productCount').innerText = "0";
+            }
+            showLoader(false);
         }
 
         // --- 2. Modal Logic ---
@@ -194,19 +220,15 @@
         }
 
         // --- 3. Custom Confirmation Logic ---
-        let pendingAction = null; // Store action to execute after confirm
-
         function askConfirmation(status) {
             const checkboxes = document.querySelectorAll('.product-check:checked');
             const count = checkboxes.length;
 
             if (count === 0) return alert("Please select at least one product first.");
 
-            // Set message and show modal
             document.getElementById('confirmMessage').innerText = `Are you sure you want to set ${count} products to ${status.toUpperCase()}?`;
             document.getElementById('confirmModal').style.display = "flex";
             
-            // Setup the YES button
             document.getElementById('confirmYesBtn').onclick = function() {
                 closeConfirmModal();
                 updateStatus(status);
@@ -217,13 +239,35 @@
             document.getElementById('confirmModal').style.display = "none";
         }
 
-        // --- 4. API & Data Logic ---
+        // --- 4. Select Helper Logic ---
+        function selectByStatus(type) {
+            const checkboxes = document.querySelectorAll('.product-check');
+            checkboxes.forEach(cb => {
+                // Find the row to check status
+                const row = cb.closest('tr');
+                const statusText = row.querySelector('td:last-child span').innerText.toLowerCase();
+                
+                if (type === 'all') cb.checked = true;
+                else if (type === 'none') cb.checked = false;
+                else if (type === 'active' && statusText === 'active') cb.checked = true;
+                else if (type === 'draft' && statusText === 'draft') cb.checked = true;
+                // Don't uncheck others if adding selection (optional behavior, here I assume additive selection for user friendliness)
+            });
+        }
+
+        // --- 5. API & Data Logic ---
         async function fetchCollections() {
             showLoader(true, "Fetching Collections...");
             const result = await callAPI('getCollections');
             if (result.success) {
                 globalCollections = result.collections;
-                filterCollections();
+                const select = document.getElementById('collectionSelect');
+                globalCollections.forEach(c => {
+                    const opt = document.createElement('option');
+                    opt.value = c.id;
+                    opt.text = c.title;
+                    select.appendChild(opt);
+                });
             }
             showLoader(false);
         }
@@ -231,6 +275,9 @@
         async function loadProducts() {
             const collectionId = document.getElementById('collectionSelect').value;
             if (!collectionId) return;
+            
+            // Clear search box
+            document.getElementById('storeSearch').value = "";
 
             showLoader(true, "Loading Products...");
             document.getElementById('productTableBody').innerHTML = '<tr><td colspan="6" class="text-center py-5">Loading...</td></tr>';
@@ -246,7 +293,7 @@
             showLoader(false);
         }
 
-        // --- 5. Sorting & Rendering Logic (UPDATED) ---
+        // --- 6. Sorting & Rendering Logic (UPDATED) ---
         function sortAndRender() {
             const sortMode = document.getElementById('sortSelect').value;
             const tbody = document.getElementById('productTableBody');
@@ -260,16 +307,10 @@
 
             // Custom Sorting Logic
             globalProducts.sort((a, b) => {
-                if (sortMode === 'active_first') {
-                    // Active before Draft
-                    return (a.status === b.status) ? 0 : (a.status === 'active' ? -1 : 1);
-                }
-                if (sortMode === 'draft_first') {
-                    // Draft before Active
-                    return (a.status === b.status) ? 0 : (a.status === 'draft' ? -1 : 1);
-                }
-                if (sortMode === 'az') return a.title.localeCompare(b.title);
-                if (sortMode === 'za') return b.title.localeCompare(a.title);
+                if (sortMode === 'newest') return new Date(b.created_at) - new Date(a.created_at);
+                if (sortMode === 'oldest') return new Date(a.created_at) - new Date(b.created_at);
+                if (sortMode === 'active_first') return (a.status === b.status) ? 0 : (a.status === 'active' ? -1 : 1);
+                if (sortMode === 'draft_first') return (a.status === b.status) ? 0 : (a.status === 'draft' ? -1 : 1);
                 return 0;
             });
 
@@ -281,8 +322,6 @@
                 let imgSrc = p.image ? p.image.src : 'https://placehold.co/60';
                 let highResImg = imgSrc; 
                 let statusClass = p.status === 'active' ? 'status-active' : 'status-draft';
-                
-                // SKU & Type Check
                 let sku = (p.variants && p.variants.length > 0 && p.variants[0].sku) ? p.variants[0].sku : '<span class="text-muted">-</span>';
                 let type = p.product_type || '<span class="text-muted">-</span>';
 
@@ -309,7 +348,6 @@
             showLoader(true, "Updating...");
             const result = await callAPI('updateStatus', { ids: ids, status: newStatus });
             if (result.success) {
-                // Local Update
                 globalProducts.forEach(p => {
                     if(ids.includes(p.id.toString())) p.status = newStatus;
                 });
@@ -320,7 +358,8 @@
 
         async function callAPI(action, payload = {}) {
             const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 60000);
+            // Increased timeout to 5 minutes (300000 ms) to handle slow Shopify responses
+            const timeoutId = setTimeout(() => controller.abort(), 300000); 
             try {
                 const response = await fetch(GAS_WEB_APP_URL, {
                     method: "POST",
@@ -332,7 +371,7 @@
                 return await response.json();
             } catch (error) {
                 console.error(error);
-                showError(error.name === 'AbortError' ? "Timeout!" : error.message);
+                showError(error.name === 'AbortError' ? "Timeout! Request took too long." : error.message);
                 return { error: true };
             }
         }
