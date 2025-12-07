@@ -67,10 +67,10 @@
     <!-- Custom Confirmation Modal (Web App Internal Popup) -->
     <div id="confirmModal">
         <div class="confirm-box">
-            <h4 class="mb-3 fw-bold text-dark">Confirm Action</h4>
+            <h4 id="modalTitle" class="mb-3 fw-bold text-dark">Confirm Action</h4>
             <p id="confirmMessage" class="text-secondary mb-4 fs-6">Are you sure?</p>
             <div class="d-flex justify-content-center gap-3">
-                <button class="btn btn-light border px-4" onclick="closeConfirmModal()">Cancel</button>
+                <button id="confirmCancelBtn" class="btn btn-light border px-4" onclick="closeConfirmModal()">Cancel</button>
                 <button id="confirmYesBtn" class="btn btn-primary px-4">Yes, Proceed</button>
             </div>
         </div>
@@ -188,15 +188,42 @@
             fetchCollections();
         };
 
-        // --- CUSTOM MODAL LOGIC ---
-        function showCustomConfirm(message, callback) {
+        // --- CUSTOM MODAL LOGIC (Enhanced) ---
+        
+        // 1. Alert Modal (Only OK button)
+        function showCustomAlert(message) {
             const modal = document.getElementById('confirmModal');
+            const titleElem = document.getElementById('modalTitle');
             const msgElem = document.getElementById('confirmMessage');
             const yesBtn = document.getElementById('confirmYesBtn');
+            const cancelBtn = document.getElementById('confirmCancelBtn');
 
+            titleElem.innerText = "Notice";
             msgElem.innerText = message;
             
-            // Assign the callback to the Yes button
+            // Adjust for Alert Mode
+            cancelBtn.style.display = 'none'; // Hide cancel
+            yesBtn.innerText = "OK";
+            yesBtn.onclick = function() { closeConfirmModal(); };
+
+            modal.style.display = 'flex';
+        }
+
+        // 2. Confirm Modal (Yes/No buttons)
+        function showCustomConfirm(message, callback) {
+            const modal = document.getElementById('confirmModal');
+            const titleElem = document.getElementById('modalTitle');
+            const msgElem = document.getElementById('confirmMessage');
+            const yesBtn = document.getElementById('confirmYesBtn');
+            const cancelBtn = document.getElementById('confirmCancelBtn');
+
+            titleElem.innerText = "Confirm Action";
+            msgElem.innerText = message;
+            
+            // Adjust for Confirm Mode
+            cancelBtn.style.display = 'inline-block'; // Show cancel
+            yesBtn.innerText = "Yes, Proceed";
+            
             yesBtn.onclick = function() {
                 modal.style.display = 'none';
                 callback();
@@ -214,7 +241,11 @@
         // 1. Set Active/Draft Handler
         function initUpdateStatus(status) {
             const checkboxes = document.querySelectorAll('.product-check:checked');
-            if (checkboxes.length === 0) return alert("Please select products first.");
+            
+            // Use Custom Alert if no selection
+            if (checkboxes.length === 0) {
+                return showCustomAlert("Please select at least one product first.");
+            }
             
             const count = checkboxes.length;
             const message = `Are you sure you want to set ${count} products to ${status.toUpperCase()}?`;
@@ -239,11 +270,11 @@
             const result = await callAPI('draftAllStore');
 
             if (result.success) {
-                alert(`Success! ${result.count} products moved to Draft.`);
+                showCustomAlert(`Success! ${result.count} products moved to Draft.`);
                 const currentCollection = document.getElementById('collectionSelect').value;
                 if(currentCollection) loadProducts();
             } else {
-                alert("Result: " + (result.message || "Unknown"));
+                showCustomAlert("Result: " + (result.message || "Unknown"));
             }
             showLoader(false);
         }
@@ -252,7 +283,7 @@
 
         async function searchStore() {
             const query = document.getElementById('storeSearch').value;
-            if(!query) return alert("Enter search text.");
+            if(!query) return showCustomAlert("Enter search text.");
 
             document.getElementById('collectionSelect').value = "";
             showLoader(true, "Searching...");
