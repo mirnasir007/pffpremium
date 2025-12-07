@@ -9,16 +9,11 @@
     <style>
         body { margin: 0; padding: 0; background-color: #f4f6f8; font-family: sans-serif; }
         .container-fluid { max-width: 100%; padding: 0 30px; }
-        
-        /* Image Styling */
         .product-img { width: 50px; height: 50px; object-fit: cover; border-radius: 4px; border: 1px solid #ddd; cursor: pointer; transition: transform 0.2s; }
         .product-img:hover { transform: scale(1.1); border-color: #0d6efd; }
-
-        /* Status Badges */
         .status-active { color: #198754; font-weight: bold; background: #d1e7dd; padding: 4px 8px; border-radius: 4px; font-size: 0.85rem; }
         .status-draft { color: #6c757d; font-weight: bold; background: #e2e3e5; padding: 4px 8px; border-radius: 4px; font-size: 0.85rem; }
 
-        /* Sticky Header */
         .sticky-header-wrapper {
             position: sticky; top: 0; z-index: 1020;
             background-color: #f4f6f8;
@@ -26,48 +21,32 @@
             box-shadow: 0 4px 6px -4px rgba(0,0,0,0.1);
         }
 
-        /* Image Modal Overlay */
-        #imageModal {
+        #imageModal, #confirmModal {
             display: none; position: fixed; z-index: 3000; left: 0; top: 0;
             width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.8);
             justify-content: center; align-items: center;
         }
-        #modalImg { max-width: 90%; max-height: 90%; border-radius: 8px; box-shadow: 0 0 20px rgba(255,255,255,0.2); }
-        .close-modal { position: absolute; top: 20px; right: 30px; color: #f1f1f1; font-size: 40px; font-weight: bold; cursor: pointer; }
+        #modalImg { max-width: 90%; max-height: 90%; border-radius: 8px; }
+        .close-modal { position: absolute; top: 20px; right: 30px; color: #f1f1f1; font-size: 40px; cursor: pointer; }
+        .confirm-box { background: white; padding: 25px; border-radius: 8px; width: 400px; text-align: center; }
 
-        /* Custom Confirm Modal */
-        #confirmModal {
-            display: none; position: fixed; z-index: 3100; left: 0; top: 0;
-            width: 100%; height: 100%; background-color: rgba(0,0,0,0.5);
-            justify-content: center; align-items: center;
-        }
-        .confirm-box {
-            background: white; padding: 25px; border-radius: 8px; width: 400px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.2); text-align: center;
-        }
-
-        /* Loader & Error */
         .loading-overlay {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(255,255,255,0.9); z-index: 2000; display: none;
             justify-content: center; align-items: center; flex-direction: column;
         }
         #error-display { display: none; position: fixed; bottom: 20px; right: 20px; max-width: 400px; z-index: 2100; }
-        
-        /* Helper Links */
         .helper-link { cursor: pointer; font-size: 0.85rem; text-decoration: none; margin-right: 8px; }
         .helper-link:hover { text-decoration: underline; }
     </style>
 </head>
 <body>
 
-    <!-- Image View Modal -->
     <div id="imageModal" onclick="this.style.display='none'">
         <span class="close-modal">&times;</span>
         <img id="modalImg">
     </div>
 
-    <!-- Custom Confirmation Modal -->
     <div id="confirmModal">
         <div class="confirm-box">
             <h5 class="mb-3">Confirm Action</h5>
@@ -80,36 +59,32 @@
     </div>
 
     <div class="container-fluid">
-        
-        <!-- Sticky Header -->
         <div class="sticky-header-wrapper">
             <div class="d-flex justify-content-between align-items-center mb-2 p-3 bg-white shadow-sm rounded">
-                <h4 class="m-0">Shopify Manager <small class="text-muted fs-6">| Advanced</small></h4>
+                <h4 class="m-0">Shopify Manager <small class="text-muted fs-6">| Active Viewer</small></h4>
                 <div><span class="badge bg-primary">External Hosted</span></div>
             </div>
 
-            <!-- Controls Panel -->
             <div class="card shadow-sm">
                 <div class="card-body p-3">
                     <div class="row g-3 align-items-end">
                         
-                        <!-- Search & Collection Area -->
                         <div class="col-md-5">
-                            <label class="form-label fw-bold small text-muted mb-1">Global Search / Collection</label>
+                            <label class="form-label fw-bold small text-muted mb-1">Global Search / Active / Collection</label>
                             
-                            <!-- Search Input Group -->
-                            <div class="input-group input-group-sm mb-1">
-                                <input type="text" id="storeSearch" class="form-control" placeholder="Search Title, SKU, or Type...">
-                                <button class="btn btn-primary" type="button" onclick="searchStore()">Search Store</button>
+                            <!-- Search & Active Button -->
+                            <div class="input-group input-group-sm mb-2">
+                                <input type="text" id="storeSearch" class="form-control" placeholder="Search Title, SKU...">
+                                <button class="btn btn-primary" type="button" onclick="searchStore()">Search</button>
+                                <!-- NEW BUTTON -->
+                                <button class="btn btn-info text-white fw-bold" type="button" onclick="loadActiveProducts()">Show All Active</button>
                             </div>
 
-                            <!-- Collection Select -->
                             <select id="collectionSelect" class="form-select form-select-sm" onchange="loadProducts()">
                                 <option value="" selected disabled>-- Or Select Collection --</option>
                             </select>
                         </div>
 
-                        <!-- Sort Options (NEW) -->
                         <div class="col-md-2">
                             <label class="form-label fw-bold small text-muted mb-1">Sort Products</label>
                             <select id="sortSelect" class="form-select form-select-sm" onchange="sortAndRender()">
@@ -120,7 +95,6 @@
                             </select>
                         </div>
 
-                        <!-- Buttons -->
                         <div class="col-md-5 d-flex gap-2 justify-content-end">
                             <button class="btn btn-sm btn-success" onclick="askConfirmation('active')">Set Active</button>
                             <button class="btn btn-sm btn-secondary" onclick="askConfirmation('draft')">Set Draft</button>
@@ -129,23 +103,21 @@
                     </div>
                     
                     <div class="d-flex justify-content-between mt-2 align-items-center">
-                         <!-- Selection Helpers -->
                         <div class="small">
                             <strong>Quick Select: </strong>
                             <span class="helper-link text-primary" onclick="selectByStatus('all')">All</span>
-                            <span class="helper-link text-success" onclick="selectByStatus('active')">All Active</span>
-                            <span class="helper-link text-secondary" onclick="selectByStatus('draft')">All Draft</span>
+                            <span class="helper-link text-success" onclick="selectByStatus('active')">Active</span>
+                            <span class="helper-link text-secondary" onclick="selectByStatus('draft')">Draft</span>
                             <span class="helper-link text-danger" onclick="selectByStatus('none')">None</span>
                         </div>
                         <div class="fw-bold text-muted small">
-                            Total Products: <span id="productCount" class="text-dark">0</span>
+                            Total: <span id="productCount" class="text-dark">0</span>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- Table -->
         <div class="card shadow-sm mt-3 mb-5">
             <div class="card-body p-0">
                 <table class="table table-hover table-bordered m-0 align-middle table-sm">
@@ -160,14 +132,13 @@
                         </tr>
                     </thead>
                     <tbody id="productTableBody">
-                        <tr><td colspan="6" class="text-center py-5 text-muted">Select a collection or Search to start.</td></tr>
+                        <tr><td colspan="6" class="text-center py-5 text-muted">Select a collection, Search, or click "Show All Active".</td></tr>
                     </tbody>
                 </table>
             </div>
         </div>
     </div>
 
-    <!-- Error & Loader -->
     <div id="error-display" class="alert alert-danger shadow-lg">
         <strong>Error:</strong> <span id="error-text"></span>
         <button class="btn-close ms-2" onclick="this.parentElement.style.display='none'"></button>
@@ -179,7 +150,7 @@
 
     <script>
         // ******************************************************
-        // PUT YOUR NEW DEPLOYED URL HERE
+        // Apnar New Deployed URL Ekhane Din
         // ******************************************************
         const GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbzyfwn3QM5HTtkWACf7V6eto14AMrQmRG2zznKaEXyBNmCodqpuQuagVjhv2BweRhkMeg/exec"; 
 
@@ -191,16 +162,35 @@
             fetchCollections();
         };
 
-        // --- 1. Search Logic ---
-        async function searchStore() {
-            const query = document.getElementById('storeSearch').value;
-            if(!query) return alert("Please enter a Title, SKU or Type to search.");
-
-            // Reset Collection Dropdown
+        // --- NEW: Load Active Products ---
+        async function loadActiveProducts() {
+            // UI Reset
+            document.getElementById('storeSearch').value = "";
             document.getElementById('collectionSelect').value = "";
             
+            showLoader(true, "Fetching All Active Products...");
+            document.getElementById('productTableBody').innerHTML = '<tr><td colspan="6" class="text-center py-5">Loading active products...</td></tr>';
+            
+            // Backend Call
+            const result = await callAPI('getAllActive');
+            
+            if (result.success && result.products) {
+                globalProducts = result.products;
+                sortAndRender(); 
+            } else {
+                document.getElementById('productTableBody').innerHTML = '<tr><td colspan="6" class="text-center text-danger">Failed to load active products.</td></tr>';
+                document.getElementById('productCount').innerText = "0";
+            }
+            showLoader(false);
+        }
+
+        // --- Search Logic ---
+        async function searchStore() {
+            const query = document.getElementById('storeSearch').value;
+            if(!query) return alert("Please enter text to search.");
+
+            document.getElementById('collectionSelect').value = "";
             showLoader(true, "Searching Global Store...");
-            document.getElementById('productTableBody').innerHTML = '<tr><td colspan="6" class="text-center py-5">Searching entire store... This may take time.</td></tr>';
             
             const result = await callAPI('searchStore', { query: query });
             
@@ -208,55 +198,38 @@
                 globalProducts = result.products;
                 sortAndRender(); 
             } else {
-                document.getElementById('productTableBody').innerHTML = '<tr><td colspan="6" class="text-center text-danger">No products found for this search.</td></tr>';
+                document.getElementById('productTableBody').innerHTML = '<tr><td colspan="6" class="text-center text-danger">No products found.</td></tr>';
                 document.getElementById('productCount').innerText = "0";
             }
             showLoader(false);
         }
 
-        // --- 2. Modal Logic ---
+        // --- Common Logic ---
         function viewImage(url) {
             document.getElementById('modalImg').src = url;
             document.getElementById('imageModal').style.display = "flex";
         }
 
-        // --- 3. Custom Confirmation Logic ---
         function askConfirmation(status) {
             const checkboxes = document.querySelectorAll('.product-check:checked');
-            const count = checkboxes.length;
-
-            if (count === 0) return alert("Please select at least one product first.");
-
-            document.getElementById('confirmMessage').innerText = `Are you sure you want to set ${count} products to ${status.toUpperCase()}?`;
+            if (checkboxes.length === 0) return alert("Please select products first.");
+            document.getElementById('confirmMessage').innerText = `Set ${checkboxes.length} products to ${status.toUpperCase()}?`;
             document.getElementById('confirmModal').style.display = "flex";
-            
-            document.getElementById('confirmYesBtn').onclick = function() {
-                closeConfirmModal();
-                updateStatus(status);
-            };
+            document.getElementById('confirmYesBtn').onclick = function() { closeConfirmModal(); updateStatus(status); };
         }
+        function closeConfirmModal() { document.getElementById('confirmModal').style.display = "none"; }
 
-        function closeConfirmModal() {
-            document.getElementById('confirmModal').style.display = "none";
-        }
-
-        // --- 4. Select Helper Logic ---
         function selectByStatus(type) {
-            const checkboxes = document.querySelectorAll('.product-check');
-            checkboxes.forEach(cb => {
-                // Find the row to check status
+            document.querySelectorAll('.product-check').forEach(cb => {
                 const row = cb.closest('tr');
-                const statusText = row.querySelector('td:last-child span').innerText.toLowerCase();
-                
+                const status = row.querySelector('td:last-child span').innerText.toLowerCase();
                 if (type === 'all') cb.checked = true;
                 else if (type === 'none') cb.checked = false;
-                else if (type === 'active' && statusText === 'active') cb.checked = true;
-                else if (type === 'draft' && statusText === 'draft') cb.checked = true;
-                // Don't uncheck others if adding selection (optional behavior, here I assume additive selection for user friendliness)
+                else if (type === 'active' && status === 'active') cb.checked = true;
+                else if (type === 'draft' && status === 'draft') cb.checked = true;
             });
         }
 
-        // --- 5. API & Data Logic ---
         async function fetchCollections() {
             showLoader(true, "Fetching Collections...");
             const result = await callAPI('getCollections');
@@ -265,9 +238,7 @@
                 const select = document.getElementById('collectionSelect');
                 globalCollections.forEach(c => {
                     const opt = document.createElement('option');
-                    opt.value = c.id;
-                    opt.text = c.title;
-                    select.appendChild(opt);
+                    opt.value = c.id; opt.text = c.title; select.appendChild(opt);
                 });
             }
             showLoader(false);
@@ -276,25 +247,13 @@
         async function loadProducts() {
             const collectionId = document.getElementById('collectionSelect').value;
             if (!collectionId) return;
-            
-            // Clear search box
             document.getElementById('storeSearch').value = "";
-
             showLoader(true, "Loading Products...");
-            document.getElementById('productTableBody').innerHTML = '<tr><td colspan="6" class="text-center py-5">Loading...</td></tr>';
-            
             const result = await callAPI('getProducts', { collectionId: collectionId });
-            
-            if (result.success && result.products) {
-                globalProducts = result.products;
-                sortAndRender(); 
-            } else {
-                document.getElementById('productTableBody').innerHTML = '<tr><td colspan="6" class="text-center text-danger">Failed to load.</td></tr>';
-            }
+            if (result.success) { globalProducts = result.products; sortAndRender(); }
             showLoader(false);
         }
 
-        // --- 6. Sorting & Rendering Logic (UPDATED) ---
         function sortAndRender() {
             const sortMode = document.getElementById('sortSelect').value;
             const tbody = document.getElementById('productTableBody');
@@ -306,7 +265,6 @@
                 return;
             }
 
-            // Custom Sorting Logic
             globalProducts.sort((a, b) => {
                 if (sortMode === 'newest') return new Date(b.created_at) - new Date(a.created_at);
                 if (sortMode === 'oldest') return new Date(a.created_at) - new Date(b.created_at);
@@ -315,29 +273,24 @@
                 return 0;
             });
 
-            // Rendering
             tbody.innerHTML = '';
             countSpan.innerText = globalProducts.length;
 
             globalProducts.forEach(p => {
                 let imgSrc = p.image ? p.image.src : 'https://placehold.co/60';
-                let highResImg = imgSrc; 
                 let statusClass = p.status === 'active' ? 'status-active' : 'status-draft';
-                let sku = (p.variants && p.variants.length > 0 && p.variants[0].sku) ? p.variants[0].sku : '<span class="text-muted">-</span>';
-                let type = p.product_type || '<span class="text-muted">-</span>';
+                let sku = (p.variants && p.variants[0]) ? p.variants[0].sku : '-';
+                let type = p.product_type || '-';
 
                 let row = `
                     <tr>
                         <td class="text-center"><input type="checkbox" class="product-check form-check-input" value="${p.id}"></td>
-                        <td class="text-center">
-                            <img src="${imgSrc}" class="product-img" onclick="viewImage('${highResImg}')" title="Click to Zoom">
-                        </td>
+                        <td class="text-center"><img src="${imgSrc}" class="product-img" onclick="viewImage('${imgSrc}')"></td>
                         <td class="fw-bold text-dark">${p.title}</td>
                         <td class="small font-monospace text-secondary">${sku}</td>
                         <td class="small text-secondary">${type}</td>
                         <td class="text-center"><span class="${statusClass}">${p.status.toUpperCase()}</span></td>
-                    </tr>
-                `;
+                    </tr>`;
                 tbody.innerHTML += row;
             });
         }
@@ -345,28 +298,22 @@
         async function updateStatus(newStatus) {
             const checkboxes = document.querySelectorAll('.product-check:checked');
             const ids = Array.from(checkboxes).map(cb => cb.value);
-
             showLoader(true, "Updating...");
             const result = await callAPI('updateStatus', { ids: ids, status: newStatus });
             if (result.success) {
-                globalProducts.forEach(p => {
-                    if(ids.includes(p.id.toString())) p.status = newStatus;
-                });
+                globalProducts.forEach(p => { if(ids.includes(p.id.toString())) p.status = newStatus; });
                 sortAndRender();
             }
             showLoader(false);
         }
 
-        async function callAPI(action, payload = {}) {
+        async function callAPI(action, payload) {
             const controller = new AbortController();
-            // Increased timeout to 5 minutes (300000 ms) to handle slow Shopify responses
             const timeoutId = setTimeout(() => controller.abort(), 300000); 
             try {
                 const response = await fetch(GAS_WEB_APP_URL, {
-                    method: "POST",
-                    body: JSON.stringify({ action, ...payload }),
-                    headers: { "Content-Type": "text/plain;charset=utf-8" },
-                    signal: controller.signal
+                    method: "POST", body: JSON.stringify({ action, ...payload }),
+                    headers: { "Content-Type": "text/plain" }, signal: controller.signal
                 });
                 clearTimeout(timeoutId);
                 return await response.json();
@@ -382,10 +329,8 @@
             if(text) document.getElementById('loaderText').innerText = text;
         }
         function showError(msg) {
-            const el = document.getElementById('error-display');
             document.getElementById('error-text').innerText = msg;
-            el.style.display = 'block';
-            setTimeout(() => el.style.display = 'none', 5000);
+            document.getElementById('error-display').style.display = 'block';
         }
         function toggleSelectAll() {
             const main = document.getElementById('selectAll');
