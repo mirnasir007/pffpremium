@@ -42,56 +42,37 @@
         }
         @keyframes popIn { from { transform: scale(0.8); opacity: 0; } to { transform: scale(1); opacity: 1; } }
 
-        /* Helper Links */
+        /* Helper Links & Local Filter */
         .helper-link { cursor: pointer; font-size: 0.85rem; text-decoration: none; margin-right: 8px; }
         .helper-link:hover { text-decoration: underline; }
+        
+        /* Local Filter Input Style */
+        .local-filter-container { margin-left: 15px; border-left: 2px solid #ddd; padding-left: 15px; display: inline-flex; align-items: center; }
+        #localFilterInput { 
+            border: 1px solid #ced4da; border-radius: 4px; padding: 2px 8px; font-size: 0.85rem; width: 200px; transition: border-color 0.15s ease-in-out; 
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%23999' viewBox='0 0 16 16'%3E%3Cpath d='M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0z'%3E%3C/path%3E%3C/svg%3E");
+            background-repeat: no-repeat; background-position: 95% center;
+        }
+        #localFilterInput:focus { border-color: #86b7fe; outline: 0; box-shadow: 0 0 0 0.25rem rgba(13,110,253,.25); }
 
         /* =========================================
-           NEW INVENTORY GRID STYLE (4 Per Row)
+           INVENTORY GRID STYLE (4 Per Row)
            ========================================= */
-        .inv-grid-container {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 4px; /* Space between items */
-            width: 100%;
-        }
+        .inv-grid-container { display: flex; flex-wrap: wrap; gap: 4px; width: 100%; }
         .inv-item {
-            /* Calculates exactly 25% width minus the gap, forcing 4 items per row */
-            flex: 0 0 calc(25% - 4px); 
-            background: #fff;
-            border: 1px solid #dee2e6;
-            border-radius: 4px;
-            padding: 2px;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            overflow: hidden;
+            flex: 0 0 calc(25% - 4px); background: #fff; border: 1px solid #dee2e6; border-radius: 4px;
+            padding: 2px; display: flex; align-items: center; justify-content: space-between; overflow: hidden;
         }
         .inv-label {
-            font-size: 0.75rem;
-            font-weight: bold;
-            color: #555;
-            margin-left: 2px;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            max-width: 25px; /* Keeps label small */
-            cursor: help;
+            font-size: 0.75rem; font-weight: bold; color: #555; margin-left: 2px;
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 25px; cursor: help;
         }
         .inv-input { 
-            width: 32px; /* Very Compact Input */
-            text-align: center; 
-            border: none;
-            background: #f8f9fa;
-            font-size: 0.85rem;
-            font-weight: bold;
-            padding: 1px;
-            margin-left: 2px;
-            border-radius: 2px;
+            width: 32px; text-align: center; border: none; background: #f8f9fa;
+            font-size: 0.85rem; font-weight: bold; padding: 1px; margin-left: 2px; border-radius: 2px;
         }
         .inv-input:focus { outline: 2px solid #86b7fe; background: #fff; }
         .inv-dirty { background-color: #fff3cd !important; color: #856404; } 
-
 
         /* =========================================
            LOADING BAR STYLE
@@ -101,10 +82,8 @@
             background-color: #e9ecef; z-index: 9999; display: none; overflow: hidden;
         }
         .bar-indeterminate {
-            background-color: #0d6efd;
-            height: 100%; width: 100%;
-            animation: indeterminateAnimation 1.5s infinite linear;
-            transform-origin: 0% 50%;
+            background-color: #0d6efd; height: 100%; width: 100%;
+            animation: indeterminateAnimation 1.5s infinite linear; transform-origin: 0% 50%;
         }
         @keyframes indeterminateAnimation {
             0% { transform:  translateX(0) scaleX(0); }
@@ -172,7 +151,7 @@
                         </div>
                         <div class="col-md-2">
                             <label class="form-label fw-bold small text-muted mb-1">Sort Products</label>
-                            <select id="sortSelect" class="form-select form-select-sm" onchange="sortAndRender()">
+                            <select id="sortSelect" class="form-select form-select-sm" onchange="applyLocalFilter()">
                                 <option value="newest">Date: New to Old</option>
                                 <option value="oldest">Date: Old to New</option>
                                 <option value="active_first">Status: Active First</option>
@@ -187,12 +166,16 @@
                     </div>
                     
                     <div class="d-flex justify-content-between mt-2 align-items-center">
-                        <div class="small">
+                        <div class="small d-flex align-items-center">
                             <strong>Quick Select: </strong>
-                            <span class="helper-link text-primary" onclick="selectByStatus('all')">All</span>
+                            <span class="ms-2 helper-link text-primary" onclick="selectByStatus('all')">All</span>
                             <span class="helper-link text-success" onclick="selectByStatus('active')">Active</span>
                             <span class="helper-link text-secondary" onclick="selectByStatus('draft')">Draft</span>
                             <span class="helper-link text-danger" onclick="selectByStatus('none')">None</span>
+                            
+                            <div class="local-filter-container">
+                                <input type="text" id="localFilterInput" placeholder="Filter List (Title, SKU, Type)" onkeyup="applyLocalFilter()" disabled>
+                            </div>
                         </div>
                         <div class="fw-bold text-muted small">
                             Total: <span id="productCount" class="text-dark">0</span>
@@ -210,7 +193,8 @@
                             <th width="40"><input type="checkbox" id="selectAll" class="form-check-input" onclick="toggleSelectAll()"></th>
                             <th width="60">Image</th>
                             <th class="text-start">Product Title</th>
-                            <th width="280">Inventory</th> <th width="120">SKU</th>
+                            <th width="280">Inventory</th> 
+                            <th width="120">SKU</th>
                             <th width="100">Type</th>
                             <th width="80">Status</th>
                         </tr>
@@ -233,6 +217,7 @@
 
         let globalCollections = []; 
         let globalProducts = [];
+        let filteredProducts = []; // Stores the current filtered subset
         let pendingInventory = {};
 
         window.onload = function() {
@@ -289,31 +274,54 @@
             showLoader(false);
         }
 
-        // --- RENDER LOGIC (UPDATED FOR 4-COLUMN GRID) ---
+        // --- FILTER & RENDER LOGIC (OPTIMIZED) ---
+        
+        // This is called when User types in the new box
+        function applyLocalFilter() {
+            const term = document.getElementById('localFilterInput').value.toLowerCase();
+            
+            if (!term) {
+                filteredProducts = [...globalProducts]; // No filter
+            } else {
+                filteredProducts = globalProducts.filter(p => {
+                    const titleMatch = p.title.toLowerCase().includes(term);
+                    const typeMatch = p.product_type && p.product_type.toLowerCase().includes(term);
+                    const skuMatch = p.variants.some(v => v.sku && v.sku.toLowerCase().includes(term));
+                    return titleMatch || typeMatch || skuMatch;
+                });
+            }
+            sortAndRender();
+        }
+
         function sortAndRender() {
             const sortMode = document.getElementById('sortSelect').value;
             const tbody = document.getElementById('productTableBody');
             const countSpan = document.getElementById('productCount');
             
-            if(globalProducts.length === 0) return renderEmpty("No products found.");
+            if(filteredProducts.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="7" class="text-center py-5 text-muted">No products found.</td></tr>`;
+                countSpan.innerText = "0";
+                return;
+            }
 
-            globalProducts.sort((a, b) => {
+            // Sorting
+            filteredProducts.sort((a, b) => {
                 if (sortMode === 'newest') return new Date(b.created_at) - new Date(a.created_at);
                 if (sortMode === 'oldest') return new Date(a.created_at) - new Date(b.created_at);
                 if (sortMode === 'active_first') return (a.status === b.status) ? 0 : (a.status === 'active' ? -1 : 1);
+                if (sortMode === 'draft_first') return (a.status === b.status) ? 0 : (a.status === 'draft' ? -1 : 1);
                 return 0;
             });
 
-            tbody.innerHTML = '';
-            countSpan.innerText = globalProducts.length;
+            countSpan.innerText = filteredProducts.length;
 
-            globalProducts.forEach(p => {
+            // Bulk HTML construction for Speed
+            const rows = filteredProducts.map(p => {
                 let imgSrc = p.image ? p.image.src : 'https://placehold.co/60';
                 let statusClass = p.status === 'active' ? 'status-active' : 'status-draft';
                 let sku = (p.variants && p.variants[0]) ? p.variants[0].sku : '-';
                 let type = p.product_type || '-';
 
-                // --- NEW GRID INVENTORY HTML ---
                 let inventoryHtml = '<div class="inv-grid-container">';
                 if(p.variants && p.variants.length > 0) {
                     p.variants.forEach(v => {
@@ -326,19 +334,20 @@
                     });
                 }
                 inventoryHtml += '</div>';
-                // -----------------------------
 
-                let row = `
+                return `
                     <tr>
                         <td class="text-center"><input type="checkbox" class="product-check form-check-input" value="${p.id}"></td>
                         <td class="text-center"><img src="${imgSrc}" class="product-img" onclick="viewImage('${imgSrc}')"></td>
                         <td class="fw-bold text-dark">${p.title}</td>
-                        <td style="vertical-align: top;">${inventoryHtml}</td> <td class="small font-monospace text-secondary">${sku}</td>
+                        <td style="vertical-align: top;">${inventoryHtml}</td>
+                        <td class="small font-monospace text-secondary">${sku}</td>
                         <td class="small text-secondary">${type}</td>
                         <td class="text-center"><span class="${statusClass}">${p.status.toUpperCase()}</span></td>
                     </tr>`;
-                tbody.innerHTML += row;
-            });
+            }).join('');
+
+            tbody.innerHTML = rows;
         }
 
         // --- CORE & HELPERS ---
@@ -346,10 +355,21 @@
             const query = document.getElementById('storeSearch').value;
             if(!query) return showCustomAlert("Enter search text.");
             document.getElementById('collectionSelect').value = "";
-            showLoader(true, "Searching...");
+            document.getElementById('localFilterInput').value = "";
+            document.getElementById('localFilterInput').disabled = true;
+
+            showLoader(true, "Searching Store...");
             const result = await callAPI('searchStore', { query: query });
-            if (result.success && result.products) { globalProducts = result.products; sortAndRender(); } 
-            else { renderEmpty("No products found."); }
+            
+            if (result.success && result.products) { 
+                globalProducts = result.products; 
+                filteredProducts = [...globalProducts];
+                sortAndRender(); 
+                document.getElementById('localFilterInput').disabled = false;
+            } else { 
+                globalProducts = []; filteredProducts = [];
+                sortAndRender(); // Will show empty
+            }
             showLoader(false);
         }
 
@@ -371,10 +391,21 @@
             const collectionId = document.getElementById('collectionSelect').value;
             if (!collectionId) return;
             document.getElementById('storeSearch').value = "";
+            
+            // Reset Local Filter
+            document.getElementById('localFilterInput').value = "";
+            document.getElementById('localFilterInput').disabled = true; // Disable until loaded
+
             pendingInventory = {}; document.getElementById('btnSaveInventory').style.display = 'none';
             showLoader(true, "Loading Products...");
+            
             const result = await callAPI('getProducts', { collectionId: collectionId });
-            if (result.success) { globalProducts = result.products; sortAndRender(); }
+            if (result.success) { 
+                globalProducts = result.products;
+                filteredProducts = [...globalProducts]; // Init filtered list
+                sortAndRender(); 
+                document.getElementById('localFilterInput').disabled = false; // Enable
+            }
             showLoader(false);
         }
 
@@ -385,7 +416,7 @@
             const result = await callAPI('updateStatus', { ids: ids, status: newStatus });
             if (result.success) {
                 globalProducts.forEach(p => { if(ids.includes(p.id.toString())) p.status = newStatus; });
-                sortAndRender();
+                applyLocalFilter(); // Re-render preserving filter
             }
             showLoader(false);
         }
@@ -455,7 +486,6 @@
             }
         }
         function showError(msg) { document.getElementById('error-text').innerText = msg; document.getElementById('error-display').style.display = 'block'; setTimeout(() => document.getElementById('error-display').style.display='none', 5000); }
-        function renderEmpty(msg) { document.getElementById('productTableBody').innerHTML = `<tr><td colspan="7" class="text-center py-5 text-muted">${msg}</td></tr>`; document.getElementById('productCount').innerText = "0"; }
         function toggleSelectAll() { const main = document.getElementById('selectAll'); document.querySelectorAll('.product-check').forEach(cb => cb.checked = main.checked); }
     </script>
 </body>
