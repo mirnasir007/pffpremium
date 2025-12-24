@@ -217,8 +217,8 @@
 
         let globalCollections = []; 
         let globalProducts = [];
-        let filteredProducts = []; // Stores the current filtered subset
-        let pendingInventory = {};
+        let filteredProducts = []; 
+        let pendingInventory = {}; // Key will now be inventory_item_id
 
         window.onload = function() {
             if(!GAS_WEB_APP_URL.includes("/exec")) return showError("Invalid URL! Must end with /exec");
@@ -238,16 +238,17 @@
             }
         }
 
-        // --- INVENTORY LOGIC ---
-        function trackInventoryChange(input, variantId) {
+        // --- INVENTORY LOGIC (Tracking by Inventory Item ID) ---
+        function trackInventoryChange(input, invItemId) {
             input.classList.add('inv-dirty');
-            pendingInventory[variantId] = input.value;
+            pendingInventory[invItemId] = input.value;
             document.getElementById('btnSaveInventory').style.display = 'inline-block';
         }
 
         async function saveInventoryChanges() {
-            const updates = Object.keys(pendingInventory).map(vid => {
-                return { variantId: vid, quantity: pendingInventory[vid] };
+            // Using Inventory Item ID for backend update
+            const updates = Object.keys(pendingInventory).map(iid => {
+                return { inventoryItemId: iid, quantity: pendingInventory[iid] };
             });
             if(updates.length === 0) return;
 
@@ -256,11 +257,13 @@
 
             if(result.success) {
                 updates.forEach(u => {
-                    const inputs = document.querySelectorAll(`input[data-vid="${u.variantId}"]`);
+                    const inputs = document.querySelectorAll(`input[data-iid="${u.inventoryItemId}"]`);
                     inputs.forEach(inp => inp.classList.remove('inv-dirty'));
+                    
+                    // Update globalProducts memory to reflect changes
                     globalProducts.forEach(p => {
                         if(p.variants) {
-                            let v = p.variants.find(v => v.id == u.variantId);
+                            let v = p.variants.find(v => v.inventory_item_id == u.inventoryItemId);
                             if(v) v.inventory_quantity = parseInt(u.quantity);
                         }
                     });
@@ -269,19 +272,16 @@
                 document.getElementById('btnSaveInventory').style.display = 'none';
                 showCustomAlert("Inventory Updated Successfully!");
             } else {
-                showCustomAlert("Some updates failed.");
+                showCustomAlert("Failed. Check if Location ID is set in Shopify.");
             }
             showLoader(false);
         }
 
-        // --- FILTER & RENDER LOGIC (OPTIMIZED) ---
-        
-        // This is called when User types in the new box
+        // --- FILTER & RENDER LOGIC ---
         function applyLocalFilter() {
             const term = document.getElementById('localFilterInput').value.toLowerCase();
-            
             if (!term) {
-                filteredProducts = [...globalProducts]; // No filter
+                filteredProducts = [...globalProducts];
             } else {
                 filteredProducts = globalProducts.filter(p => {
                     const titleMatch = p.title.toLowerCase().includes(term);
@@ -304,7 +304,6 @@
                 return;
             }
 
-            // Sorting
             filteredProducts.sort((a, b) => {
                 if (sortMode === 'newest') return new Date(b.created_at) - new Date(a.created_at);
                 if (sortMode === 'oldest') return new Date(a.created_at) - new Date(b.created_at);
@@ -315,7 +314,6 @@
 
             countSpan.innerText = filteredProducts.length;
 
-            // Bulk HTML construction for Speed
             const rows = filteredProducts.map(p => {
                 let imgSrc = p.image ? p.image.src : 'https://placehold.co/60';
                 let statusClass = p.status === 'active' ? 'status-active' : 'status-draft';
@@ -326,10 +324,11 @@
                 if(p.variants && p.variants.length > 0) {
                     p.variants.forEach(v => {
                         let label = v.title === 'Default Title' ? 'Qty' : v.title;
+                        // Important: Storing inventory_item_id in data-iid attribute
                         inventoryHtml += `
                             <div class="inv-item" title="${label}">
                                 <span class="inv-label">${label}</span>
-                                <input type="number" class="inv-input" data-vid="${v.id}" value="${v.inventory_quantity}" onchange="trackInventoryChange(this, '${v.id}')">
+                                <input type="number" class="inv-input" data-iid="${v.inventory_item_id}" value="${v.inventory_quantity}" onchange="trackInventoryChange(this, '${v.inventory_item_id}')">
                             </div>`;
                     });
                 }
@@ -368,7 +367,7 @@
                 document.getElementById('localFilterInput').disabled = false;
             } else { 
                 globalProducts = []; filteredProducts = [];
-                sortAndRender(); // Will show empty
+                sortAndRender(); 
             }
             showLoader(false);
         }
@@ -392,9 +391,8 @@
             if (!collectionId) return;
             document.getElementById('storeSearch').value = "";
             
-            // Reset Local Filter
             document.getElementById('localFilterInput').value = "";
-            document.getElementById('localFilterInput').disabled = true; // Disable until loaded
+            document.getElementById('localFilterInput').disabled = true; 
 
             pendingInventory = {}; document.getElementById('btnSaveInventory').style.display = 'none';
             showLoader(true, "Loading Products...");
@@ -402,9 +400,9 @@
             const result = await callAPI('getProducts', { collectionId: collectionId });
             if (result.success) { 
                 globalProducts = result.products;
-                filteredProducts = [...globalProducts]; // Init filtered list
+                filteredProducts = [...globalProducts]; 
                 sortAndRender(); 
-                document.getElementById('localFilterInput').disabled = false; // Enable
+                document.getElementById('localFilterInput').disabled = false; 
             }
             showLoader(false);
         }
@@ -416,7 +414,7 @@
             const result = await callAPI('updateStatus', { ids: ids, status: newStatus });
             if (result.success) {
                 globalProducts.forEach(p => { if(ids.includes(p.id.toString())) p.status = newStatus; });
-                applyLocalFilter(); // Re-render preserving filter
+                applyLocalFilter(); 
             }
             showLoader(false);
         }
