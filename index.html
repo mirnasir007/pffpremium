@@ -54,17 +54,23 @@
         /* Helper Links */
         .helper-link { cursor: pointer; font-size: 0.85rem; text-decoration: none; margin-right: 8px; }
         .helper-link:hover { text-decoration: underline; }
+
+        /* Inventory Input Styles */
+        .inv-input { 
+            width: 60px; text-align: center; padding: 2px; font-size: 0.9rem; border: 1px solid #ced4da; border-radius: 3px;
+        }
+        .inv-input:focus { border-color: #86b7fe; outline: 0; box-shadow: 0 0 0 0.25rem rgba(13,110,253,.25); }
+        .inv-dirty { background-color: #fff3cd; border-color: #ffc107; } /* Highlights changed inputs */
+        .inv-badge { font-size: 0.8rem; margin-right: 3px; font-weight: bold; color: #444; }
     </style>
 </head>
 <body>
 
-    <!-- Image View Modal -->
     <div id="imageModal" onclick="this.style.display='none'">
         <span class="close-modal">&times;</span>
         <img id="modalImg">
     </div>
 
-    <!-- Custom Confirmation Modal (Web App Internal Popup) -->
     <div id="confirmModal">
         <div class="confirm-box">
             <h4 id="modalTitle" class="mb-3 fw-bold text-dark">Confirm Action</h4>
@@ -77,12 +83,14 @@
     </div>
 
     <div class="container-fluid">
-        <!-- Sticky Header -->
         <div class="sticky-header-wrapper">
             <div class="d-flex justify-content-between align-items-center mb-2 p-3 bg-white shadow-sm rounded">
                 <h4 class="m-0">Shopify Manager <small class="text-muted fs-6">| Advanced</small></h4>
                 <div class="d-flex align-items-center gap-2">
-                    <!-- DANGER BUTTON (Storewide) -->
+                    <button id="btnSaveInventory" class="btn btn-warning btn-sm fw-bold shadow-sm" style="display:none;" onclick="saveInventoryChanges()">
+                        💾 SAVE INVENTORY CHANGES
+                    </button>
+
                     <button class="btn btn-danger btn-sm fw-bold border border-white shadow-sm" onclick="initDraftAllStore()">⚠️ ALL DRAFT (Storewide)</button>
                     <span class="badge bg-primary">External Hosted</span>
                 </div>
@@ -92,7 +100,6 @@
                 <div class="card-body p-3">
                     <div class="row g-3 align-items-end">
                         
-                        <!-- Search & Collection -->
                         <div class="col-md-5">
                             <label class="form-label fw-bold small text-muted mb-1">Global Search / Collection</label>
                             
@@ -106,7 +113,6 @@
                             </select>
                         </div>
 
-                        <!-- Sort Options -->
                         <div class="col-md-2">
                             <label class="form-label fw-bold small text-muted mb-1">Sort Products</label>
                             <select id="sortSelect" class="form-select form-select-sm" onchange="sortAndRender()">
@@ -117,7 +123,6 @@
                             </select>
                         </div>
 
-                        <!-- Action Buttons -->
                         <div class="col-md-5 d-flex gap-2 justify-content-end">
                             <button class="btn btn-sm btn-success" onclick="initUpdateStatus('active')">Set Active</button>
                             <button class="btn btn-sm btn-secondary" onclick="initUpdateStatus('draft')">Set Draft</button>
@@ -125,7 +130,6 @@
                         </div>
                     </div>
                     
-                    <!-- Quick Select Helpers -->
                     <div class="d-flex justify-content-between mt-2 align-items-center">
                         <div class="small">
                             <strong>Quick Select: </strong>
@@ -142,7 +146,6 @@
             </div>
         </div>
 
-        <!-- Data Table -->
         <div class="card shadow-sm mt-3 mb-5">
             <div class="card-body p-0">
                 <table class="table table-hover table-bordered m-0 align-middle table-sm">
@@ -151,20 +154,19 @@
                             <th width="40"><input type="checkbox" id="selectAll" class="form-check-input" onclick="toggleSelectAll()"></th>
                             <th width="70">Image</th>
                             <th class="text-start">Product Title</th>
-                            <th width="150">SKU</th>
-                            <th width="120">Type</th>
+                            <th width="250">Inventory (Variant : Qty)</th> <th width="120">SKU</th>
+                            <th width="100">Type</th>
                             <th width="100">Status</th>
                         </tr>
                     </thead>
                     <tbody id="productTableBody">
-                        <tr><td colspan="6" class="text-center py-5 text-muted">Select a collection or Search to start.</td></tr>
+                        <tr><td colspan="7" class="text-center py-5 text-muted">Select a collection or Search to start.</td></tr>
                     </tbody>
                 </table>
             </div>
         </div>
     </div>
 
-    <!-- Error & Loader -->
     <div id="error-display" class="alert alert-danger shadow-lg">
         <strong>Error:</strong> <span id="error-text"></span>
         <button class="btn-close ms-2" onclick="this.parentElement.style.display='none'"></button>
@@ -181,94 +183,102 @@
         const GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbzyfwn3QM5HTtkWACf7V6eto14AMrQmRG2zznKaEXyBNmCodqpuQuagVjhv2BweRhkMeg/exec"; 
 
         let globalCollections = []; 
-        let globalProducts = [];    
+        let globalProducts = [];
+        let pendingInventory = {}; // To store changes { variantId: newQty }
 
         window.onload = function() {
             if(!GAS_WEB_APP_URL.includes("/exec")) return showError("Invalid URL! Must end with /exec");
             fetchCollections();
         };
 
-        // --- CUSTOM MODAL LOGIC (Enhanced) ---
+        // --- INVENTORY MANAGEMENT LOGIC ---
         
-        // 1. Alert Modal (Only OK button)
+        function trackInventoryChange(input, variantId) {
+            const newVal = input.value;
+            // Mark input visually as dirty
+            input.classList.add('inv-dirty');
+            
+            // Store change
+            pendingInventory[variantId] = newVal;
+            
+            // Show Save Button
+            document.getElementById('btnSaveInventory').style.display = 'inline-block';
+        }
+
+        async function saveInventoryChanges() {
+            const updates = Object.keys(pendingInventory).map(vid => {
+                return { variantId: vid, quantity: pendingInventory[vid] };
+            });
+
+            if(updates.length === 0) return;
+
+            showLoader(true, `Saving ${updates.length} inventory changes...`);
+            
+            const result = await callAPI('updateInventory', { updates: updates });
+
+            if(result.success) {
+                // Update Global Data to reflect changes
+                updates.forEach(u => {
+                    // Update UI clean state
+                    const inputs = document.querySelectorAll(`input[data-vid="${u.variantId}"]`);
+                    inputs.forEach(inp => inp.classList.remove('inv-dirty'));
+                    
+                    // Update memory
+                    globalProducts.forEach(p => {
+                        if(p.variants) {
+                            let v = p.variants.find(v => v.id == u.variantId);
+                            if(v) v.inventory_quantity = parseInt(u.quantity);
+                        }
+                    });
+                });
+                
+                pendingInventory = {}; // Clear pending
+                document.getElementById('btnSaveInventory').style.display = 'none';
+                showCustomAlert("Inventory Updated Successfully!");
+            } else {
+                showCustomAlert("Some updates failed. Check console or try again.");
+            }
+            showLoader(false);
+        }
+
+        // --- CUSTOM MODAL LOGIC ---
         function showCustomAlert(message) {
             const modal = document.getElementById('confirmModal');
-            const titleElem = document.getElementById('modalTitle');
-            const msgElem = document.getElementById('confirmMessage');
+            document.getElementById('modalTitle').innerText = "Notice";
+            document.getElementById('confirmMessage').innerText = message;
+            document.getElementById('confirmCancelBtn').style.display = 'none';
             const yesBtn = document.getElementById('confirmYesBtn');
-            const cancelBtn = document.getElementById('confirmCancelBtn');
-
-            titleElem.innerText = "Notice";
-            msgElem.innerText = message;
-            
-            // Adjust for Alert Mode
-            cancelBtn.style.display = 'none'; // Hide cancel
             yesBtn.innerText = "OK";
             yesBtn.onclick = function() { closeConfirmModal(); };
-
             modal.style.display = 'flex';
         }
 
-        // 2. Confirm Modal (Yes/No buttons)
         function showCustomConfirm(message, callback) {
             const modal = document.getElementById('confirmModal');
-            const titleElem = document.getElementById('modalTitle');
-            const msgElem = document.getElementById('confirmMessage');
+            document.getElementById('modalTitle').innerText = "Confirm Action";
+            document.getElementById('confirmMessage').innerText = message;
+            document.getElementById('confirmCancelBtn').style.display = 'inline-block';
             const yesBtn = document.getElementById('confirmYesBtn');
-            const cancelBtn = document.getElementById('confirmCancelBtn');
-
-            titleElem.innerText = "Confirm Action";
-            msgElem.innerText = message;
-            
-            // Adjust for Confirm Mode
-            cancelBtn.style.display = 'inline-block'; // Show cancel
             yesBtn.innerText = "Yes, Proceed";
-            
-            yesBtn.onclick = function() {
-                modal.style.display = 'none';
-                callback();
-            };
-
+            yesBtn.onclick = function() { modal.style.display = 'none'; callback(); };
             modal.style.display = 'flex';
         }
-
-        function closeConfirmModal() {
-            document.getElementById('confirmModal').style.display = 'none';
-        }
+        function closeConfirmModal() { document.getElementById('confirmModal').style.display = 'none'; }
 
         // --- BUTTON HANDLERS ---
-        
-        // 1. Set Active/Draft Handler
         function initUpdateStatus(status) {
             const checkboxes = document.querySelectorAll('.product-check:checked');
-            
-            // Use Custom Alert if no selection
-            if (checkboxes.length === 0) {
-                return showCustomAlert("Please select at least one product first.");
-            }
-            
-            const count = checkboxes.length;
-            const message = `Are you sure you want to set ${count} products to ${status.toUpperCase()}?`;
-
-            showCustomConfirm(message, function() {
-                updateStatus(status);
-            });
+            if (checkboxes.length === 0) return showCustomAlert("Please select at least one product first.");
+            showCustomConfirm(`Set ${checkboxes.length} products to ${status.toUpperCase()}?`, function() { updateStatus(status); });
         }
 
-        // 2. Draft All Store Handler
         function initDraftAllStore() {
-            const message = "⚠️ WARNING: This will set ALL active products in your ENTIRE STORE to DRAFT. This affects all collections. Are you sure?";
-            
-            showCustomConfirm(message, function() {
-                // Logic to execute API call
-                executeDraftAllStore();
-            });
+            showCustomConfirm("⚠️ WARNING: This sets ALL active products to DRAFT. Are you sure?", function() { executeDraftAllStore(); });
         }
 
         async function executeDraftAllStore() {
             showLoader(true, "Processing Storewide Draft...");
             const result = await callAPI('draftAllStore');
-
             if (result.success) {
                 showCustomAlert(`Success! ${result.count} products moved to Draft.`);
                 const currentCollection = document.getElementById('collectionSelect').value;
@@ -280,23 +290,15 @@
         }
 
         // --- CORE LOGIC ---
-
         async function searchStore() {
             const query = document.getElementById('storeSearch').value;
             if(!query) return showCustomAlert("Enter search text.");
-
             document.getElementById('collectionSelect').value = "";
             showLoader(true, "Searching...");
-            document.getElementById('productTableBody').innerHTML = '<tr><td colspan="6" class="text-center py-5">Searching...</td></tr>';
-            
+            document.getElementById('productTableBody').innerHTML = '<tr><td colspan="7" class="text-center py-5">Searching...</td></tr>';
             const result = await callAPI('searchStore', { query: query });
-            
-            if (result.success && result.products) {
-                globalProducts = result.products;
-                sortAndRender(); 
-            } else {
-                renderEmpty("No products found.");
-            }
+            if (result.success && result.products) { globalProducts = result.products; sortAndRender(); } 
+            else { renderEmpty("No products found."); }
             showLoader(false);
         }
 
@@ -318,6 +320,7 @@
             const collectionId = document.getElementById('collectionSelect').value;
             if (!collectionId) return;
             document.getElementById('storeSearch').value = "";
+            pendingInventory = {}; document.getElementById('btnSaveInventory').style.display = 'none'; // Clear pending on load
             showLoader(true, "Loading...");
             const result = await callAPI('getProducts', { collectionId: collectionId });
             if (result.success) { globalProducts = result.products; sortAndRender(); }
@@ -348,12 +351,23 @@
                 let sku = (p.variants && p.variants[0]) ? p.variants[0].sku : '-';
                 let type = p.product_type || '-';
 
+                // --- INVENTORY RENDER LOGIC ---
+                let inventoryHtml = '<div class="d-flex flex-wrap gap-2 align-items-center">';
+                if(p.variants && p.variants.length > 0) {
+                    p.variants.forEach(v => {
+                        let label = v.title === 'Default Title' ? '' : `<span class="inv-badge">${v.title}</span>`;
+                        inventoryHtml += `<div class="d-flex align-items-center bg-light border rounded px-1">${label}<input type="number" class="inv-input form-control-sm border-0 bg-light" data-vid="${v.id}" value="${v.inventory_quantity}" onchange="trackInventoryChange(this, '${v.id}')"></div>`;
+                    });
+                }
+                inventoryHtml += '</div>';
+                // -----------------------------
+
                 let row = `
                     <tr>
                         <td class="text-center"><input type="checkbox" class="product-check form-check-input" value="${p.id}"></td>
                         <td class="text-center"><img src="${imgSrc}" class="product-img" onclick="viewImage('${imgSrc}')"></td>
                         <td class="fw-bold text-dark">${p.title}</td>
-                        <td class="small font-monospace text-secondary">${sku}</td>
+                        <td>${inventoryHtml}</td> <td class="small font-monospace text-secondary">${sku}</td>
                         <td class="small text-secondary">${type}</td>
                         <td class="text-center"><span class="${statusClass}">${p.status.toUpperCase()}</span></td>
                     </tr>`;
@@ -374,11 +388,7 @@
         }
 
         // Helpers
-        function viewImage(url) {
-            document.getElementById('modalImg').src = url;
-            document.getElementById('imageModal').style.display = "flex";
-        }
-
+        function viewImage(url) { document.getElementById('modalImg').src = url; document.getElementById('imageModal').style.display = "flex"; }
         function selectByStatus(type) {
             document.querySelectorAll('.product-check').forEach(cb => {
                 const row = cb.closest('tr');
@@ -392,7 +402,7 @@
 
         async function callAPI(action, payload) {
             const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 300000); // 5 Minutes
+            const timeoutId = setTimeout(() => controller.abort(), 300000); 
             try {
                 const response = await fetch(GAS_WEB_APP_URL, {
                     method: "POST", body: JSON.stringify({ action, ...payload }),
@@ -401,7 +411,6 @@
                 clearTimeout(timeoutId);
                 return await response.json();
             } catch (error) {
-                console.error(error);
                 showError(error.name === 'AbortError' ? "Timeout! Server busy." : error.message);
                 return { error: true };
             }
@@ -417,7 +426,7 @@
             setTimeout(() => document.getElementById('error-display').style.display='none', 5000);
         }
         function renderEmpty(msg) {
-            document.getElementById('productTableBody').innerHTML = `<tr><td colspan="6" class="text-center py-5 text-muted">${msg}</td></tr>`;
+            document.getElementById('productTableBody').innerHTML = `<tr><td colspan="7" class="text-center py-5 text-muted">${msg}</td></tr>`;
             document.getElementById('productCount').innerText = "0";
         }
         function toggleSelectAll() {
