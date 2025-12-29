@@ -436,7 +436,7 @@
                 document.getElementById('btnSaveInventory').style.display = 'none';
                 showToast("Inventory Saved!", "success"); 
             } else {
-                showToast("Failed to save inventory", "error");
+                showToast("Failed to save inventory: " + (result.message || "Unknown Error"), "error");
             }
             showLoader(false);
         }
@@ -493,9 +493,13 @@
                }
             });
 
+            // 2. Call APIs (Inventory First, then Status)
+            let invSuccess = true;
             if(inventoryUpdates.length > 0) {
-                await callAPI({ action: 'updateInventory', updates: inventoryUpdates });
+                const invResult = await callAPI({ action: 'updateInventory', updates: inventoryUpdates });
+                if(!invResult.success) invSuccess = false;
             }
+            
             const statusResult = await callAPI({ action: 'updateStatus', ids: ids, status: 'draft' });
 
             if (statusResult.success) {
@@ -523,7 +527,9 @@
                    if(prod) prod.status = 'draft';
                 });
                 renderGrid(); 
-                showToast("Draft Set & Inventory Zeroed!", "success");
+                
+                if(invSuccess) showToast("Draft Set & Inventory Zeroed!", "success");
+                else showToast("Status Drafted, but Inventory Failed!", "error");
             } else {
                 showToast("Error updating status", "error");
             }
