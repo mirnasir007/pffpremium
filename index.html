@@ -4,22 +4,21 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Shopify Manager</title>
-    <link rel="icon" type="image/png" href="https://cdn-icons-png.flaticon.com/512/1170/1170679.png">
+    <link rel="icon" type="image/png" href="logo.png">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <style>
         body { margin: 0; padding: 0; background-color: #f4f6f8; font-family: sans-serif; }
         .container-fluid { max-width: 100%; padding: 0 30px; }
         
-        .product-img { 
-            width: 50px; height: 50px; object-fit: cover; border-radius: 4px; border: 1px solid #ddd; 
-            cursor: pointer; transition: transform 0.2s; background: #eee;
-        }
+        /* Product Image */
+        .product-img { width: 50px; height: 50px; object-fit: cover; border-radius: 4px; border: 1px solid #ddd; cursor: pointer; transition: transform 0.2s; }
         .product-img:hover { transform: scale(1.1); border-color: #0d6efd; }
         
+        /* Status Badges */
         .status-active { color: #198754; font-weight: bold; background: #d1e7dd; padding: 4px 8px; border-radius: 4px; font-size: 0.85rem; }
         .status-draft { color: #6c757d; font-weight: bold; background: #e2e3e5; padding: 4px 8px; border-radius: 4px; font-size: 0.85rem; }
 
+        /* Sticky Header */
         .sticky-header-wrapper {
             position: sticky; top: 0; z-index: 1020;
             background-color: #f4f6f8;
@@ -27,6 +26,38 @@
             box-shadow: 0 4px 6px -4px rgba(0,0,0,0.1);
         }
 
+        /* Modals */
+        #imageModal, #confirmModal {
+            display: none; position: fixed; z-index: 3000; left: 0; top: 0;
+            width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.6);
+            backdrop-filter: blur(2px);
+            justify-content: center; align-items: center;
+        }
+        #modalImg { max-width: 90%; max-height: 90%; border-radius: 8px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+        .close-modal { position: absolute; top: 20px; right: 30px; color: #fff; font-size: 40px; cursor: pointer; }
+        
+        .confirm-box { 
+            background: white; padding: 30px; border-radius: 12px; width: 450px; 
+            text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.2); animation: popIn 0.3s ease;
+        }
+        @keyframes popIn { from { transform: scale(0.8); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+
+        /* Helper Links & Local Filter */
+        .helper-link { cursor: pointer; font-size: 0.85rem; text-decoration: none; margin-right: 8px; }
+        .helper-link:hover { text-decoration: underline; }
+        
+        /* Local Filter Input Style */
+        .local-filter-container { margin-left: 15px; border-left: 2px solid #ddd; padding-left: 15px; display: inline-flex; align-items: center; }
+        #localFilterInput { 
+            border: 1px solid #ced4da; border-radius: 4px; padding: 2px 8px; font-size: 0.85rem; width: 200px; transition: border-color 0.15s ease-in-out; 
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%23999' viewBox='0 0 16 16'%3E%3Cpath d='M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0z'%3E%3C/path%3E%3C/svg%3E");
+            background-repeat: no-repeat; background-position: 95% center;
+        }
+        #localFilterInput:focus { border-color: #86b7fe; outline: 0; box-shadow: 0 0 0 0.25rem rgba(13,110,253,.25); }
+
+        /* =========================================
+           INVENTORY GRID STYLE (4 Per Row)
+           ========================================= */
         .inv-grid-container { display: flex; flex-wrap: wrap; gap: 4px; width: 100%; }
         .inv-item {
             flex: 0 0 calc(25% - 4px); background: #fff; border: 1px solid #dee2e6; border-radius: 4px;
@@ -43,6 +74,9 @@
         .inv-input:focus { outline: 2px solid #86b7fe; background: #fff; }
         .inv-dirty { background-color: #fff3cd !important; color: #856404; } 
 
+        /* =========================================
+           LOADING BAR STYLE
+           ========================================= */
         #ajax-loader-bar {
             position: fixed; top: 0; left: 0; width: 100%; height: 4px;
             background-color: #e9ecef; z-index: 9999; display: none; overflow: hidden;
@@ -56,79 +90,35 @@
             40% { transform:  translateX(0) scaleX(0.4); }
             100% { transform:  translateX(100%) scaleX(0.5); }
         }
-        #load-more-container { text-align: center; margin: 20px 0 50px 0; }
-        .load-more-btn { padding: 10px 30px; font-weight: bold; }
-        
         #click-blocker {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: transparent; z-index: 9998; display: none; cursor: progress;
         }
-        
-        #imageModal, #confirmModal {
-            display: none; position: fixed; z-index: 3000; left: 0; top: 0;
-            width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.85);
-            backdrop-filter: blur(4px); justify-content: center; align-items: center;
+        #loading-toast {
+            position: fixed; bottom: 20px; right: 20px; z-index: 9999;
+            background: #333; color: white; padding: 8px 16px; border-radius: 4px;
+            font-size: 0.9rem; display: none; box-shadow: 0 2px 10px rgba(0,0,0,0.2);
         }
-        #modalImg { 
-            max-width: 95%; max-height: 95%; border-radius: 4px; 
-            box-shadow: 0 0 20px rgba(0,0,0,0.5);
-            display: none; 
-        }
-        #modalLoader { width: 3rem; height: 3rem; color: white; }
-        .close-modal { position: absolute; top: 20px; right: 30px; color: #fff; font-size: 50px; cursor: pointer; z-index: 3001; }
-        .confirm-box { background: white; padding: 30px; border-radius: 12px; width: 450px; text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.2); }
-
-        #custom-toast {
-            visibility: hidden;
-            min-width: 250px;
-            background-color: #333;
-            color: #fff;
-            text-align: center;
-            border-radius: 8px;
-            padding: 16px;
-            position: fixed;
-            z-index: 5000;
-            left: 50%;
-            bottom: 30px;
-            transform: translateX(-50%);
-            font-size: 17px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
-            opacity: 0;
-            transition: opacity 0.3s, bottom 0.3s;
-        }
-        #custom-toast.show { visibility: visible; opacity: 1; bottom: 50px; }
-        #custom-toast.success { background-color: #198754; }
-        #custom-toast.error { background-color: #dc3545; }
-
-        .helper-link { cursor: pointer; font-size: 0.9rem; text-decoration: none; margin-right: 12px; font-weight: 500; }
-        .helper-link:hover { text-decoration: underline; }
-        
-        .collection-dropdown-menu { width: 100%; max-height: 350px; overflow-y: auto; padding: 0; }
-        .collection-search-box { position: sticky; top: 0; background: white; padding: 10px; border-bottom: 1px solid #eee; z-index: 10; }
-        .dropdown-item { cursor: pointer; padding: 8px 15px; font-size: 0.9rem; border-bottom: 1px solid #f8f9fa; }
-        .dropdown-item:hover { background-color: #e9ecef; }
-        .dropdown-item.active-col { background-color: #e7f1ff; color: #0d6efd; font-weight: bold; }
     </style>
 </head>
 <body>
 
     <div id="ajax-loader-bar"><div class="bar-indeterminate"></div></div>
     <div id="click-blocker"></div> 
-    <div id="custom-toast">Notification Message</div>
+    <div id="loading-toast">Processing...</div>
 
     <div id="imageModal" onclick="this.style.display='none'">
         <span class="close-modal">&times;</span>
-        <div id="modalLoader" class="spinner-border" role="status"><span class="visually-hidden">Loading...</span></div>
         <img id="modalImg">
     </div>
 
     <div id="confirmModal">
         <div class="confirm-box">
-            <h4 id="modalTitle" class="mb-3 fw-bold text-dark">Confirm</h4>
-            <p id="confirmMessage" class="text-secondary mb-4">Are you sure?</p>
+            <h4 id="modalTitle" class="mb-3 fw-bold text-dark">Confirm Action</h4>
+            <p id="confirmMessage" class="text-secondary mb-4 fs-6">Are you sure?</p>
             <div class="d-flex justify-content-center gap-3">
                 <button id="confirmCancelBtn" class="btn btn-light border px-4" onclick="closeConfirmModal()">Cancel</button>
-                <button id="confirmYesBtn" class="btn btn-primary px-4">Yes</button>
+                <button id="confirmYesBtn" class="btn btn-primary px-4">Yes, Proceed</button>
             </div>
         </div>
     </div>
@@ -136,79 +126,66 @@
     <div class="container-fluid">
         <div class="sticky-header-wrapper">
             <div class="d-flex justify-content-between align-items-center mb-2 p-3 bg-white shadow-sm rounded">
-                <h4 class="m-0">Shopify Manager</h4>
+                <h4 class="m-0">Shopify Manager <small class="text-muted fs-6">| Advanced</small></h4>
                 <div class="d-flex align-items-center gap-2">
                     <button id="btnSaveInventory" class="btn btn-warning btn-sm fw-bold shadow-sm" style="display:none;" onclick="saveInventoryChanges()">
-                        💾 SAVE CHANGES
+                        💾 SAVE INVENTORY CHANGES
                     </button>
+                    <button class="btn btn-danger btn-sm fw-bold border border-white shadow-sm" onclick="initDraftAllStore()">⚠️ ALL DRAFT (Storewide)</button>
+                    <span class="badge bg-primary">External Hosted</span>
                 </div>
             </div>
 
             <div class="card shadow-sm">
                 <div class="card-body p-3">
                     <div class="row g-3 align-items-end">
-                        <div class="col-md-3">
-                            <label class="form-label fw-bold small text-muted mb-1">Search Products</label>
-                            <div class="input-group input-group-sm">
-                                <input type="text" id="storeSearch" class="form-control" placeholder="Search Title, SKU..." onkeyup="if(event.key === 'Enter') initSearch()">
-                                <button class="btn btn-primary" type="button" onclick="initSearch()">Search</button>
+                        <div class="col-md-5">
+                            <label class="form-label fw-bold small text-muted mb-1">Global Search / Collection</label>
+                            <div class="input-group input-group-sm mb-1">
+                                <input type="text" id="storeSearch" class="form-control" placeholder="Search Title, SKU, or Type...">
+                                <button class="btn btn-primary" type="button" onclick="searchStore()">Search Store</button>
                             </div>
+                            <select id="collectionSelect" class="form-select form-select-sm" onchange="loadProducts()">
+                                <option value="" selected disabled>-- Or Select Collection --</option>
+                            </select>
                         </div>
-                        
-                        <div class="col-md-4">
-                            <label class="form-label fw-bold small text-muted mb-1">Select Collection</label>
-                            <div class="dropdown">
-                                <button class="btn btn-outline-secondary btn-sm w-100 dropdown-toggle text-start d-flex justify-content-between align-items-center" 
-                                        type="button" id="collectionDropdownBtn" data-bs-toggle="dropdown" aria-expanded="false">
-                                    <span>-- Select Collection --</span>
-                                </button>
-                                <div class="dropdown-menu collection-dropdown-menu shadow" aria-labelledby="collectionDropdownBtn">
-                                    <div class="collection-search-box">
-                                        <input type="text" class="form-control form-control-sm" id="collectionSearchInput" 
-                                               placeholder="Type to search collection..." onkeyup="filterCollectionList()">
-                                    </div>
-                                    <div id="collectionListContainer">
-                                        <div class="p-3 text-center text-muted small">Loading collections...</div>
-                                    </div>
-                                </div>
-                            </div>
-                            <input type="hidden" id="selectedCollectionId">
-                        </div>
-
                         <div class="col-md-2">
                             <label class="form-label fw-bold small text-muted mb-1">Sort Products</label>
-                            <select id="sortSelect" class="form-select form-select-sm" onchange="renderGrid()">
+                            <select id="sortSelect" class="form-select form-select-sm" onchange="applyLocalFilter()">
                                 <option value="newest">Date: New to Old</option>
                                 <option value="oldest">Date: Old to New</option>
                                 <option value="active_first">Status: Active First</option>
                                 <option value="draft_first">Status: Draft First</option>
                             </select>
                         </div>
-
-                        <div class="col-md-3 d-flex gap-2 justify-content-end align-items-end">
+                        <div class="col-md-5 d-flex gap-2 justify-content-end">
                             <button class="btn btn-sm btn-success" onclick="initUpdateStatus('active')">Set Active</button>
                             <button class="btn btn-sm btn-secondary" onclick="initUpdateStatus('draft')">Set Draft</button>
-                            <button class="btn btn-sm btn-outline-primary" onclick="initLoadCollection()">↻ Refresh</button>
+                            <button class="btn btn-sm btn-outline-primary" onclick="loadProducts()">↻ Refresh</button>
                         </div>
                     </div>
                     
-                    <div class="d-flex justify-content-between mt-3 align-items-center border-top pt-2">
+                    <div class="d-flex justify-content-between mt-2 align-items-center">
                         <div class="small d-flex align-items-center">
-                            <strong class="me-2">Quick Select: </strong>
-                            <span class="helper-link text-primary" onclick="selectByStatus('all')">All</span>
+                            <strong>Quick Select: </strong>
+                            <span class="ms-2 helper-link text-primary" onclick="selectByStatus('all')">All</span>
                             <span class="helper-link text-success" onclick="selectByStatus('active')">Active</span>
                             <span class="helper-link text-secondary" onclick="selectByStatus('draft')">Draft</span>
                             <span class="helper-link text-danger" onclick="selectByStatus('none')">None</span>
+                            
+                            <div class="local-filter-container">
+                                <input type="text" id="localFilterInput" placeholder="Filter List (Title, SKU, Type)" onkeyup="applyLocalFilter()" disabled>
+                            </div>
                         </div>
                         <div class="fw-bold text-muted small">
-                            Loaded: <span id="productCount" class="text-dark">0</span>
+                            Total: <span id="productCount" class="text-dark">0</span>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
 
-        <div class="card shadow-sm mt-3 mb-2">
+        <div class="card shadow-sm mt-3 mb-5">
             <div class="card-body p-0">
                 <table class="table table-hover table-bordered m-0 align-middle table-sm">
                     <thead class="table-dark text-center">
@@ -228,156 +205,126 @@
                 </table>
             </div>
         </div>
-        
-        <div id="load-more-container" style="display:none;">
-             <button class="btn btn-outline-primary load-more-btn" onclick="loadMoreProducts()">⬇ Load More Products</button>
-        </div>
+    </div>
+
+    <div id="error-display" class="alert alert-danger shadow-lg" style="display:none; position:fixed; bottom:20px; left:20px; z-index:2100;">
+        <strong>Error:</strong> <span id="error-text"></span>
+        <button class="btn-close ms-2" onclick="this.parentElement.style.display='none'"></button>
     </div>
 
     <script>
-        // *** REPLACE WITH YOUR WEB APP URL ***
         const GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbzyfwn3QM5HTtkWACf7V6eto14AMrQmRG2zznKaEXyBNmCodqpuQuagVjhv2BweRhkMeg/exec"; 
 
-        let currentCursor = null;
-        let hasMoreData = false;
-        let currentMode = 'collection'; 
-        let currentQueryOrId = '';
-        
+        let globalCollections = []; 
         let globalProducts = [];
-        let globalCollections = [];
-        let pendingInventory = {}; 
+        let filteredProducts = []; 
+        let pendingInventory = {}; // Key will now be inventory_item_id
 
         window.onload = function() {
-            if(!GAS_WEB_APP_URL.includes("/exec")) return alert("Invalid URL!");
+            if(!GAS_WEB_APP_URL.includes("/exec")) return showError("Invalid URL! Must end with /exec");
             fetchCollections();
         };
 
-        function showLoader(show) {
-            document.getElementById('ajax-loader-bar').style.display = show ? 'block' : 'none';
-            document.getElementById('click-blocker').style.display = show ? 'block' : 'none';
-        }
-
-        function showToast(message, type = 'success') {
-            const x = document.getElementById("custom-toast");
-            x.className = "show " + type;
-            x.innerText = message;
-            setTimeout(function(){ x.className = x.className.replace("show", ""); }, 3000);
-        }
-
-        function filterCollectionList() {
-            const filter = document.getElementById('collectionSearchInput').value.toLowerCase();
-            const container = document.getElementById('collectionListContainer');
-            container.innerHTML = "";
-            const filtered = globalCollections.filter(c => c.title.toLowerCase().includes(filter));
-            if(filtered.length === 0) {
-                container.innerHTML = `<div class="p-3 text-center text-muted">No collections found</div>`;
-                return;
-            }
-            filtered.forEach(c => {
-                const div = document.createElement('div');
-                div.className = "dropdown-item";
-                div.innerText = c.title;
-                div.onclick = function() { selectCollection(c.id, c.title); };
-                container.appendChild(div);
-            });
-        }
-
-        function selectCollection(id, title) {
-            document.getElementById('selectedCollectionId').value = id;
-            document.getElementById('collectionDropdownBtn').innerHTML = `<span>${title}</span>`;
-            initLoadCollection();
-        }
-
-        async function initLoadCollection() {
-            const id = document.getElementById('selectedCollectionId').value;
-            if(!id) return; 
-            resetGrid();
-            currentMode = 'collection';
-            currentQueryOrId = id;
-            document.getElementById('storeSearch').value = ""; 
-            await fetchProducts();
-        }
-
-        async function initSearch() {
-            const query = document.getElementById('storeSearch').value;
-            if(!query) {
-                showToast("⚠️ Please enter search term", "error"); 
-                return; 
-            }
-            resetGrid();
-            currentMode = 'search';
-            currentQueryOrId = query;
-            document.getElementById('selectedCollectionId').value = "";
-            document.getElementById('collectionDropdownBtn').innerHTML = `<span>-- Select Collection --</span>`;
-            await fetchProducts();
-        }
-
-        function resetGrid() {
-            document.getElementById('productTableBody').innerHTML = "";
-            document.getElementById('productCount').innerText = "0";
-            document.getElementById('load-more-container').style.display = 'none';
-            currentCursor = null;
-            hasMoreData = false;
-            globalProducts = [];
-        }
-
-        async function loadMoreProducts() {
-            if(!hasMoreData) return;
-            await fetchProducts();
-        }
-
-        async function fetchProducts() {
-            showLoader(true);
-            const payload = { 
-                action: currentMode === 'collection' ? 'getProducts' : 'searchStore',
-                cursor: currentCursor
-            };
-            if(currentMode === 'collection') payload.collectionId = currentQueryOrId;
-            else payload.query = currentQueryOrId;
-
-            const result = await callAPI(payload);
-            if (result.success) {
-                currentCursor = result.nextCursor;
-                hasMoreData = result.hasNextPage;
-                if(result.products.length > 0) {
-                    globalProducts = globalProducts.concat(result.products);
-                    renderGrid(); 
-                    document.getElementById('productCount').innerText = globalProducts.length;
-                } else if(globalProducts.length === 0) {
-                    document.getElementById('productTableBody').innerHTML = `<tr><td colspan="7" class="text-center py-5 text-muted">No products found.</td></tr>`;
-                }
-                document.getElementById('load-more-container').style.display = hasMoreData ? 'block' : 'none';
+        // --- LOADING LOGIC ---
+        function showLoader(show, text) {
+            const bar = document.getElementById('ajax-loader-bar');
+            const blocker = document.getElementById('click-blocker');
+            const toast = document.getElementById('loading-toast');
+            if (show) {
+                bar.style.display = 'block'; blocker.style.display = 'block';
+                if(text) { toast.innerText = text; toast.style.display = 'block'; }
             } else {
-                showToast("Error loading products", "error");
+                bar.style.display = 'none'; blocker.style.display = 'none'; toast.style.display = 'none';
+            }
+        }
+
+        // --- INVENTORY LOGIC (Tracking by Inventory Item ID) ---
+        function trackInventoryChange(input, invItemId) {
+            input.classList.add('inv-dirty');
+            pendingInventory[invItemId] = input.value;
+            document.getElementById('btnSaveInventory').style.display = 'inline-block';
+        }
+
+        async function saveInventoryChanges() {
+            // Using Inventory Item ID for backend update
+            const updates = Object.keys(pendingInventory).map(iid => {
+                return { inventoryItemId: iid, quantity: pendingInventory[iid] };
+            });
+            if(updates.length === 0) return;
+
+            showLoader(true, "Saving Inventory...");
+            const result = await callAPI('updateInventory', { updates: updates });
+
+            if(result.success) {
+                updates.forEach(u => {
+                    const inputs = document.querySelectorAll(`input[data-iid="${u.inventoryItemId}"]`);
+                    inputs.forEach(inp => inp.classList.remove('inv-dirty'));
+                    
+                    // Update globalProducts memory to reflect changes
+                    globalProducts.forEach(p => {
+                        if(p.variants) {
+                            let v = p.variants.find(v => v.inventory_item_id == u.inventoryItemId);
+                            if(v) v.inventory_quantity = parseInt(u.quantity);
+                        }
+                    });
+                });
+                pendingInventory = {};
+                document.getElementById('btnSaveInventory').style.display = 'none';
+                showCustomAlert("Inventory Updated Successfully!");
+            } else {
+                showCustomAlert("Failed. Check if Location ID is set in Shopify.");
             }
             showLoader(false);
         }
 
-        function renderGrid() {
+        // --- FILTER & RENDER LOGIC ---
+        function applyLocalFilter() {
+            const term = document.getElementById('localFilterInput').value.toLowerCase();
+            if (!term) {
+                filteredProducts = [...globalProducts];
+            } else {
+                filteredProducts = globalProducts.filter(p => {
+                    const titleMatch = p.title.toLowerCase().includes(term);
+                    const typeMatch = p.product_type && p.product_type.toLowerCase().includes(term);
+                    const skuMatch = p.variants.some(v => v.sku && v.sku.toLowerCase().includes(term));
+                    return titleMatch || typeMatch || skuMatch;
+                });
+            }
+            sortAndRender();
+        }
+
+        function sortAndRender() {
             const sortMode = document.getElementById('sortSelect').value;
             const tbody = document.getElementById('productTableBody');
+            const countSpan = document.getElementById('productCount');
             
-            globalProducts.sort((a, b) => {
-                if (sortMode === 'newest') return 0; 
-                if (sortMode === 'oldest') return 0; 
+            if(filteredProducts.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="7" class="text-center py-5 text-muted">No products found.</td></tr>`;
+                countSpan.innerText = "0";
+                return;
+            }
+
+            filteredProducts.sort((a, b) => {
+                if (sortMode === 'newest') return new Date(b.created_at) - new Date(a.created_at);
+                if (sortMode === 'oldest') return new Date(a.created_at) - new Date(b.created_at);
                 if (sortMode === 'active_first') return (a.status === b.status) ? 0 : (a.status === 'active' ? -1 : 1);
                 if (sortMode === 'draft_first') return (a.status === b.status) ? 0 : (a.status === 'draft' ? -1 : 1);
                 return 0;
             });
 
-            let displayProducts = [...globalProducts];
-            if (sortMode === 'oldest') displayProducts.reverse();
+            countSpan.innerText = filteredProducts.length;
 
-            const html = displayProducts.map(p => {
-                let thumbSrc = p.image ? p.image.src : 'https://placehold.co/50';
-                let largeSrc = p.image ? p.image.large : 'https://placehold.co/800';
+            const rows = filteredProducts.map(p => {
+                let imgSrc = p.image ? p.image.src : 'https://placehold.co/60';
                 let statusClass = p.status === 'active' ? 'status-active' : 'status-draft';
                 let sku = (p.variants && p.variants[0]) ? p.variants[0].sku : '-';
-                
+                let type = p.product_type || '-';
+
                 let inventoryHtml = '<div class="inv-grid-container">';
                 if(p.variants && p.variants.length > 0) {
                     p.variants.forEach(v => {
                         let label = v.title === 'Default Title' ? 'Qty' : v.title;
+                        // Important: Storing inventory_item_id in data-iid attribute
                         inventoryHtml += `
                             <div class="inv-item" title="${label}">
                                 <span class="inv-label">${label}</span>
@@ -390,210 +337,154 @@
                 return `
                     <tr>
                         <td class="text-center"><input type="checkbox" class="product-check form-check-input" value="${p.id}"></td>
-                        <td class="text-center"><img src="${thumbSrc}" class="product-img" loading="lazy" onclick="viewImage('${largeSrc}')"></td>
-                        <td class="fw-bold text-dark small">${p.title}</td>
+                        <td class="text-center"><img src="${imgSrc}" class="product-img" onclick="viewImage('${imgSrc}')"></td>
+                        <td class="fw-bold text-dark">${p.title}</td>
                         <td style="vertical-align: top;">${inventoryHtml}</td>
                         <td class="small font-monospace text-secondary">${sku}</td>
-                        <td class="small text-secondary">${p.product_type}</td>
+                        <td class="small text-secondary">${type}</td>
                         <td class="text-center"><span class="${statusClass}">${p.status.toUpperCase()}</span></td>
                     </tr>`;
             }).join('');
-            tbody.innerHTML = html;
+
+            tbody.innerHTML = rows;
         }
 
+        // --- CORE & HELPERS ---
+        async function searchStore() {
+            const query = document.getElementById('storeSearch').value;
+            if(!query) return showCustomAlert("Enter search text.");
+            document.getElementById('collectionSelect').value = "";
+            document.getElementById('localFilterInput').value = "";
+            document.getElementById('localFilterInput').disabled = true;
+
+            showLoader(true, "Searching Store...");
+            const result = await callAPI('searchStore', { query: query });
+            
+            if (result.success && result.products) { 
+                globalProducts = result.products; 
+                filteredProducts = [...globalProducts];
+                sortAndRender(); 
+                document.getElementById('localFilterInput').disabled = false;
+            } else { 
+                globalProducts = []; filteredProducts = [];
+                sortAndRender(); 
+            }
+            showLoader(false);
+        }
+
+        async function fetchCollections() {
+            showLoader(true, "Loading...");
+            const result = await callAPI('getCollections');
+            if (result.success) {
+                globalCollections = result.collections;
+                const select = document.getElementById('collectionSelect');
+                globalCollections.forEach(c => {
+                    const opt = document.createElement('option');
+                    opt.value = c.id; opt.text = c.title; select.appendChild(opt);
+                });
+            }
+            showLoader(false);
+        }
+
+        async function loadProducts() {
+            const collectionId = document.getElementById('collectionSelect').value;
+            if (!collectionId) return;
+            document.getElementById('storeSearch').value = "";
+            
+            document.getElementById('localFilterInput').value = "";
+            document.getElementById('localFilterInput').disabled = true; 
+
+            pendingInventory = {}; document.getElementById('btnSaveInventory').style.display = 'none';
+            showLoader(true, "Loading Products...");
+            
+            const result = await callAPI('getProducts', { collectionId: collectionId });
+            if (result.success) { 
+                globalProducts = result.products;
+                filteredProducts = [...globalProducts]; 
+                sortAndRender(); 
+                document.getElementById('localFilterInput').disabled = false; 
+            }
+            showLoader(false);
+        }
+
+        async function updateStatus(newStatus) {
+            const checkboxes = document.querySelectorAll('.product-check:checked');
+            const ids = Array.from(checkboxes).map(cb => cb.value);
+            showLoader(true, "Updating Status...");
+            const result = await callAPI('updateStatus', { ids: ids, status: newStatus });
+            if (result.success) {
+                globalProducts.forEach(p => { if(ids.includes(p.id.toString())) p.status = newStatus; });
+                applyLocalFilter(); 
+            }
+            showLoader(false);
+        }
+        
+        // Modals & Utils
+        function showCustomAlert(message) {
+            const modal = document.getElementById('confirmModal');
+            document.getElementById('modalTitle').innerText = "Notice";
+            document.getElementById('confirmMessage').innerText = message;
+            document.getElementById('confirmCancelBtn').style.display = 'none';
+            document.getElementById('confirmYesBtn').innerText = "OK";
+            document.getElementById('confirmYesBtn').onclick = function() { closeConfirmModal(); };
+            modal.style.display = 'flex';
+        }
+        function showCustomConfirm(message, callback) {
+            const modal = document.getElementById('confirmModal');
+            document.getElementById('modalTitle').innerText = "Confirm Action";
+            document.getElementById('confirmMessage').innerText = message;
+            document.getElementById('confirmCancelBtn').style.display = 'inline-block';
+            document.getElementById('confirmYesBtn').innerText = "Yes, Proceed";
+            document.getElementById('confirmYesBtn').onclick = function() { modal.style.display = 'none'; callback(); };
+            modal.style.display = 'flex';
+        }
+        function closeConfirmModal() { document.getElementById('confirmModal').style.display = 'none'; }
+        function viewImage(url) { document.getElementById('modalImg').src = url; document.getElementById('imageModal').style.display = "flex"; }
+        function initUpdateStatus(status) {
+            const checkboxes = document.querySelectorAll('.product-check:checked');
+            if (checkboxes.length === 0) return showCustomAlert("Please select at least one product.");
+            showCustomConfirm(`Set ${checkboxes.length} products to ${status.toUpperCase()}?`, function() { updateStatus(status); });
+        }
+        function initDraftAllStore() {
+            showCustomConfirm("⚠️ WARNING: This sets ALL active products to DRAFT. Are you sure?", function() { executeDraftAllStore(); });
+        }
+        async function executeDraftAllStore() {
+            showLoader(true, "Processing Storewide Draft...");
+            const result = await callAPI('draftAllStore');
+            if (result.success) {
+                showCustomAlert(`Success! ${result.count} products moved to Draft.`);
+                const currentCollection = document.getElementById('collectionSelect').value;
+                if(currentCollection) loadProducts();
+            } else { showCustomAlert("Result: " + (result.message || "Unknown")); }
+            showLoader(false);
+        }
         function selectByStatus(type) {
             document.querySelectorAll('.product-check').forEach(cb => {
                 const row = cb.closest('tr');
-                const statusSpan = row.querySelector('td:last-child span');
-                const status = statusSpan ? statusSpan.innerText.toLowerCase() : '';
+                const status = row.querySelector('td:last-child span').innerText.toLowerCase();
                 if (type === 'all') cb.checked = true;
                 else if (type === 'none') cb.checked = false;
                 else if (type === 'active' && status === 'active') cb.checked = true;
                 else if (type === 'draft' && status === 'draft') cb.checked = true;
             });
         }
-
-        function trackInventoryChange(input, invItemId) {
-            input.classList.add('inv-dirty');
-            pendingInventory[invItemId] = input.value;
-            document.getElementById('btnSaveInventory').style.display = 'inline-block';
-        }
-
-        async function saveInventoryChanges() {
-            const updates = Object.keys(pendingInventory).map(iid => {
-                return { inventoryItemId: iid, quantity: pendingInventory[iid] };
-            });
-            if(updates.length === 0) return;
-
-            showLoader(true);
-            const result = await callAPI({ action: 'updateInventory', updates: updates });
-
-            if(result.success) {
-                updates.forEach(u => {
-                    const inputs = document.querySelectorAll(`input[data-iid="${u.inventoryItemId}"]`);
-                    inputs.forEach(inp => inp.classList.remove('inv-dirty'));
-                });
-                pendingInventory = {};
-                document.getElementById('btnSaveInventory').style.display = 'none';
-                showToast("Inventory Saved!", "success"); 
-            } else {
-                showToast("Failed to save inventory", "error");
-            }
-            showLoader(false);
-        }
-
-        async function fetchCollections() {
-            const result = await callAPI({ action: 'getCollections' });
-            if (result.success) {
-                globalCollections = result.collections;
-                filterCollectionList();
-            }
-        }
-
-        function initUpdateStatus(status) {
-            const checkboxes = document.querySelectorAll('.product-check:checked');
-            const ids = Array.from(checkboxes).map(cb => cb.value);
-            const count = ids.length;
-            
-            if(count === 0) {
-                showToast("⚠️ Select products first", "error"); 
-                return;
-            }
-
-            if(status === 'draft') {
-                const msg = `Set ${count} products to DRAFT and Inventory to 0?`;
-                document.getElementById('modalTitle').innerText = "Set Draft & Zero";
-                document.getElementById('confirmMessage').innerText = msg;
-                document.getElementById('confirmYesBtn').onclick = function() { 
-                    executeDraftAndZero(ids); 
-                    closeConfirmModal();
-                };
-                document.getElementById('confirmModal').style.display = 'flex';
-            } else {
-                const msg = `Set ${count} products to ${status.toUpperCase()}?`;
-                document.getElementById('modalTitle').innerText = "Confirm Status";
-                document.getElementById('confirmMessage').innerText = msg;
-                document.getElementById('confirmYesBtn').onclick = function() { 
-                    executeUpdateStatus(ids, status); 
-                    closeConfirmModal();
-                };
-                document.getElementById('confirmModal').style.display = 'flex';
-            }
-        }
-
-        // --- NEW & IMPROVED DRAFT FUNCTION ---
-        async function executeDraftAndZero(ids) {
-            showLoader(true);
-            
-            // 1. Prepare Inventory Updates
-            let inventoryUpdates = [];
-            ids.forEach(id => {
-               let product = globalProducts.find(p => p.id == id);
-               if(product && product.variants) {
-                   product.variants.forEach(v => {
-                       inventoryUpdates.push({ inventoryItemId: v.inventory_item_id, quantity: 0 });
-                   });
-               }
-            });
-
-            // 2. Execute Inventory Update First (Critical)
-            if(inventoryUpdates.length > 0) {
-                const invResult = await callAPI({ action: 'updateInventory', updates: inventoryUpdates });
-                if(!invResult.success) {
-                    showLoader(false);
-                    showToast("Inventory Update Failed. Status not changed.", "error");
-                    return; // Stop if inventory fails
-                }
-            }
-
-            // 3. Update Status to Draft
-            const statusResult = await callAPI({ action: 'updateStatus', ids: ids, status: 'draft' });
-
-            if (statusResult.success) {
-                // 4. Update UI
-                ids.forEach(id => {
-                   // Update Badge
-                   const checkbox = document.querySelector(`input[value="${id}"]`);
-                   if(checkbox) {
-                       const row = checkbox.closest('tr');
-                       const badge = row.querySelector('td:last-child span');
-                       badge.className = 'status-draft';
-                       badge.innerText = 'DRAFT';
-                       
-                       // Update Input Fields visually
-                       const inputs = row.querySelectorAll('.inv-input');
-                       inputs.forEach(inp => {
-                           inp.value = 0;
-                           inp.classList.remove('inv-dirty'); // Remove dirty flag
-                       });
-                   }
-                   // Update Global Data
-                   let prod = globalProducts.find(p => p.id == id);
-                   if(prod) {
-                       prod.status = 'draft';
-                       if(prod.variants) prod.variants.forEach(v => v.inventory_quantity = 0);
-                   }
-                });
-                // Clear any pending inventory for these items so "Save" button doesn't reappear
-                inventoryUpdates.forEach(u => delete pendingInventory[u.inventoryItemId]);
-                if(Object.keys(pendingInventory).length === 0) document.getElementById('btnSaveInventory').style.display = 'none';
-
-                renderGrid(); 
-                showToast("Draft Set & Inventory Zeroed!", "success");
-            } else {
-                showToast("Inventory Zeroed, but Status Update Failed", "error");
-            }
-            showLoader(false);
-        }
-
-        async function executeUpdateStatus(ids, newStatus) {
-            showLoader(true);
-            const result = await callAPI({ action: 'updateStatus', ids: ids, status: newStatus });
-            if (result.success) {
-                ids.forEach(id => {
-                    let prod = globalProducts.find(p => p.id == id);
-                    if(prod) prod.status = newStatus;
-                });
-                renderGrid();
-                showToast(`Status updated to ${newStatus.toUpperCase()}`, "success");
-            } else {
-                showToast("Failed to update status", "error");
-            }
-            showLoader(false);
-        }
-
-        function viewImage(url) { 
-            const modal = document.getElementById('imageModal');
-            const img = document.getElementById('modalImg');
-            const loader = document.getElementById('modalLoader');
-            modal.style.display = "flex"; 
-            loader.style.display = "block";
-            img.style.display = "none";
-            img.src = url;
-            img.onload = function() {
-                loader.style.display = "none";
-                img.style.display = "block";
-            };
-        }
-
-        function toggleSelectAll() { 
-            const main = document.getElementById('selectAll'); 
-            if(event.target.id !== 'selectAll') main.checked = !main.checked;
-            document.querySelectorAll('.product-check').forEach(cb => cb.checked = main.checked); 
-        }
-        function closeConfirmModal() { document.getElementById('confirmModal').style.display = 'none'; }
-        
-        async function callAPI(payload) {
+        async function callAPI(action, payload) {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 300000); 
             try {
                 const response = await fetch(GAS_WEB_APP_URL, {
-                    method: "POST", body: JSON.stringify(payload),
-                    headers: { "Content-Type": "text/plain" }
+                    method: "POST", body: JSON.stringify({ action, ...payload }),
+                    headers: { "Content-Type": "text/plain" }, signal: controller.signal
                 });
+                clearTimeout(timeoutId);
                 return await response.json();
             } catch (error) {
-                return { error: true, message: error.message };
+                showError(error.name === 'AbortError' ? "Timeout! Server busy." : error.message);
+                return { error: true };
             }
         }
+        function showError(msg) { document.getElementById('error-text').innerText = msg; document.getElementById('error-display').style.display = 'block'; setTimeout(() => document.getElementById('error-display').style.display='none', 5000); }
+        function toggleSelectAll() { const main = document.getElementById('selectAll'); document.querySelectorAll('.product-check').forEach(cb => cb.checked = main.checked); }
     </script>
 </body>
 </html>
