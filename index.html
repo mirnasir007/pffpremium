@@ -11,18 +11,15 @@
         body { margin: 0; padding: 0; background-color: #f4f6f8; font-family: sans-serif; }
         .container-fluid { max-width: 100%; padding: 0 30px; }
         
-        /* Product Image */
         .product-img { 
             width: 50px; height: 50px; object-fit: cover; border-radius: 4px; border: 1px solid #ddd; 
             cursor: pointer; transition: transform 0.2s; background: #eee;
         }
         .product-img:hover { transform: scale(1.1); border-color: #0d6efd; }
         
-        /* Status Badges */
         .status-active { color: #198754; font-weight: bold; background: #d1e7dd; padding: 4px 8px; border-radius: 4px; font-size: 0.85rem; }
         .status-draft { color: #6c757d; font-weight: bold; background: #e2e3e5; padding: 4px 8px; border-radius: 4px; font-size: 0.85rem; }
 
-        /* Sticky Header */
         .sticky-header-wrapper {
             position: sticky; top: 0; z-index: 1020;
             background-color: #f4f6f8;
@@ -30,7 +27,6 @@
             box-shadow: 0 4px 6px -4px rgba(0,0,0,0.1);
         }
 
-        /* Inventory Grid */
         .inv-grid-container { display: flex; flex-wrap: wrap; gap: 4px; width: 100%; }
         .inv-item {
             flex: 0 0 calc(25% - 4px); background: #fff; border: 1px solid #dee2e6; border-radius: 4px;
@@ -47,7 +43,6 @@
         .inv-input:focus { outline: 2px solid #86b7fe; background: #fff; }
         .inv-dirty { background-color: #fff3cd !important; color: #856404; } 
 
-        /* Loader & Load More */
         #ajax-loader-bar {
             position: fixed; top: 0; left: 0; width: 100%; height: 4px;
             background-color: #e9ecef; z-index: 9999; display: none; overflow: hidden;
@@ -69,7 +64,6 @@
             background: transparent; z-index: 9998; display: none; cursor: progress;
         }
         
-        /* Modals */
         #imageModal, #confirmModal {
             display: none; position: fixed; z-index: 3000; left: 0; top: 0;
             width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.85);
@@ -84,7 +78,6 @@
         .close-modal { position: absolute; top: 20px; right: 30px; color: #fff; font-size: 50px; cursor: pointer; z-index: 3001; }
         .confirm-box { background: white; padding: 30px; border-radius: 12px; width: 450px; text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.2); }
 
-        /* Custom Toast Notification */
         #custom-toast {
             visibility: hidden;
             min-width: 250px;
@@ -107,11 +100,9 @@
         #custom-toast.success { background-color: #198754; }
         #custom-toast.error { background-color: #dc3545; }
 
-        /* Helper Links & Custom Dropdown */
         .helper-link { cursor: pointer; font-size: 0.9rem; text-decoration: none; margin-right: 12px; font-weight: 500; }
         .helper-link:hover { text-decoration: underline; }
         
-        /* Collection Dropdown Custom Style */
         .collection-dropdown-menu { width: 100%; max-height: 350px; overflow-y: auto; padding: 0; }
         .collection-search-box { position: sticky; top: 0; background: white; padding: 10px; border-bottom: 1px solid #eee; z-index: 10; }
         .dropdown-item { cursor: pointer; padding: 8px 15px; font-size: 0.9rem; border-bottom: 1px solid #f8f9fa; }
@@ -123,18 +114,14 @@
 
     <div id="ajax-loader-bar"><div class="bar-indeterminate"></div></div>
     <div id="click-blocker"></div> 
-
-    <!-- TOAST NOTIFICATION -->
     <div id="custom-toast">Notification Message</div>
 
-    <!-- IMAGE PREVIEW MODAL -->
     <div id="imageModal" onclick="this.style.display='none'">
         <span class="close-modal">&times;</span>
         <div id="modalLoader" class="spinner-border" role="status"><span class="visually-hidden">Loading...</span></div>
         <img id="modalImg">
     </div>
 
-    <!-- CONFIRM MODAL -->
     <div id="confirmModal">
         <div class="confirm-box">
             <h4 id="modalTitle" class="mb-3 fw-bold text-dark">Confirm</h4>
@@ -250,7 +237,6 @@
     <script>
         const GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbzyfwn3QM5HTtkWACf7V6eto14AMrQmRG2zznKaEXyBNmCodqpuQuagVjhv2BweRhkMeg/exec"; 
 
-        // State Variables
         let currentCursor = null;
         let hasMoreData = false;
         let currentMode = 'collection'; 
@@ -270,7 +256,6 @@
             document.getElementById('click-blocker').style.display = show ? 'block' : 'none';
         }
 
-        // --- TOAST FUNCTION ---
         function showToast(message, type = 'success') {
             const x = document.getElementById("custom-toast");
             x.className = "show " + type;
@@ -278,7 +263,6 @@
             setTimeout(function(){ x.className = x.className.replace("show", ""); }, 3000);
         }
 
-        // --- FETCH & FILTER LOGIC ---
         function filterCollectionList() {
             const filter = document.getElementById('collectionSearchInput').value.toLowerCase();
             const container = document.getElementById('collectionListContainer');
@@ -316,7 +300,7 @@
         async function initSearch() {
             const query = document.getElementById('storeSearch').value;
             if(!query) {
-                showToast("⚠️ Please enter search term", "error"); // Changed from alert
+                showToast("⚠️ Please enter search term", "error"); 
                 return; 
             }
             resetGrid();
@@ -450,7 +434,7 @@
                 });
                 pendingInventory = {};
                 document.getElementById('btnSaveInventory').style.display = 'none';
-                showToast("Inventory Saved!", "success"); // TOAST USED HERE
+                showToast("Inventory Saved!", "success"); 
             } else {
                 showToast("Failed to save inventory", "error");
             }
@@ -465,19 +449,17 @@
             }
         }
 
-        // --- NEW UPDATE STATUS LOGIC (INCLUDES DRAFT + ZERO) ---
         function initUpdateStatus(status) {
             const checkboxes = document.querySelectorAll('.product-check:checked');
             const ids = Array.from(checkboxes).map(cb => cb.value);
             const count = ids.length;
             
             if(count === 0) {
-                showToast("⚠️ Select products first", "error"); // Changed from alert
+                showToast("⚠️ Select products first", "error"); 
                 return;
             }
 
             if(status === 'draft') {
-                // Draft + Zero Logic
                 const msg = `Set ${count} products to DRAFT and Inventory to 0?`;
                 document.getElementById('modalTitle').innerText = "Set Draft & Zero";
                 document.getElementById('confirmMessage').innerText = msg;
@@ -487,7 +469,6 @@
                 };
                 document.getElementById('confirmModal').style.display = 'flex';
             } else {
-                // Active Logic (Status Only)
                 const msg = `Set ${count} products to ${status.toUpperCase()}?`;
                 document.getElementById('modalTitle').innerText = "Confirm Status";
                 document.getElementById('confirmMessage').innerText = msg;
@@ -502,10 +483,8 @@
         async function executeDraftAndZero(ids) {
             showLoader(true);
             
-            // 1. Prepare Inventory Updates (0 for all variants of selected products)
             let inventoryUpdates = [];
             ids.forEach(id => {
-               // Find product in global memory to get variant IDs
                let product = globalProducts.find(p => p.id == id);
                if(product && product.variants) {
                    product.variants.forEach(v => {
@@ -514,30 +493,24 @@
                }
             });
 
-            // 2. Call APIs (Inventory First, then Status)
-            // Note: We call inventory update first to ensure they are zeroed before/while moving to draft
             if(inventoryUpdates.length > 0) {
                 await callAPI({ action: 'updateInventory', updates: inventoryUpdates });
             }
             const statusResult = await callAPI({ action: 'updateStatus', ids: ids, status: 'draft' });
 
-            // 3. Update UI
             if (statusResult.success) {
                 ids.forEach(id => {
                    const checkbox = document.querySelector(`input[value="${id}"]`);
                    if(checkbox) {
                        const row = checkbox.closest('tr');
                        
-                       // Update Badge
                        const badge = row.querySelector('td:last-child span');
                        badge.className = 'status-draft';
                        badge.innerText = 'DRAFT';
                        
-                       // Update Inventory Inputs to 0 visually
                        const inputs = row.querySelectorAll('.inv-input');
                        inputs.forEach(inp => {
                            inp.value = 0;
-                           // Update global memory too so sorting works correctly
                            let iid = inp.getAttribute('data-iid');
                            let prod = globalProducts.find(p => p.id == id);
                            if(prod) {
@@ -546,11 +519,10 @@
                            }
                        });
                    }
-                   // Also update global status memory
                    let prod = globalProducts.find(p => p.id == id);
                    if(prod) prod.status = 'draft';
                 });
-                renderGrid(); // Re-render to ensure consistency
+                renderGrid(); 
                 showToast("Draft Set & Inventory Zeroed!", "success");
             } else {
                 showToast("Error updating status", "error");
