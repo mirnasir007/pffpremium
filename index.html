@@ -315,7 +315,10 @@
 
         async function initSearch() {
             const query = document.getElementById('storeSearch').value;
-            if(!query) return alert("Enter search term");
+            if(!query) {
+                showToast("⚠️ Please enter search term", "error"); // Changed from alert
+                return; 
+            }
             resetGrid();
             currentMode = 'search';
             currentQueryOrId = query;
@@ -468,7 +471,10 @@
             const ids = Array.from(checkboxes).map(cb => cb.value);
             const count = ids.length;
             
-            if(count === 0) return alert("Select products first");
+            if(count === 0) {
+                showToast("⚠️ Select products first", "error"); // Changed from alert
+                return;
+            }
 
             if(status === 'draft') {
                 // Draft + Zero Logic
