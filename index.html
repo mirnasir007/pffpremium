@@ -6,7 +6,6 @@
     <title>Shopify Manager</title>
     <link rel="icon" type="image/png" href="logo.png">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <!-- Bootstrap JS for Dropdown -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <style>
         body { margin: 0; padding: 0; background-color: #f4f6f8; font-family: sans-serif; }
@@ -76,17 +75,37 @@
             width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.85);
             backdrop-filter: blur(4px); justify-content: center; align-items: center;
         }
-        /* Modal Image now bigger */
         #modalImg { 
             max-width: 95%; max-height: 95%; border-radius: 4px; 
             box-shadow: 0 0 20px rgba(0,0,0,0.5);
-            display: none; /* Initially hidden until loaded */
+            display: none; 
         }
-        #modalLoader {
-            width: 3rem; height: 3rem; color: white;
-        }
+        #modalLoader { width: 3rem; height: 3rem; color: white; }
         .close-modal { position: absolute; top: 20px; right: 30px; color: #fff; font-size: 50px; cursor: pointer; z-index: 3001; }
         .confirm-box { background: white; padding: 30px; border-radius: 12px; width: 450px; text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.2); }
+
+        /* Custom Toast Notification */
+        #custom-toast {
+            visibility: hidden;
+            min-width: 250px;
+            background-color: #333;
+            color: #fff;
+            text-align: center;
+            border-radius: 8px;
+            padding: 16px;
+            position: fixed;
+            z-index: 5000;
+            left: 50%;
+            bottom: 30px;
+            transform: translateX(-50%);
+            font-size: 17px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            opacity: 0;
+            transition: opacity 0.3s, bottom 0.3s;
+        }
+        #custom-toast.show { visibility: visible; opacity: 1; bottom: 50px; }
+        #custom-toast.success { background-color: #198754; }
+        #custom-toast.error { background-color: #dc3545; }
 
         /* Helper Links & Custom Dropdown */
         .helper-link { cursor: pointer; font-size: 0.9rem; text-decoration: none; margin-right: 12px; font-weight: 500; }
@@ -105,16 +124,17 @@
     <div id="ajax-loader-bar"><div class="bar-indeterminate"></div></div>
     <div id="click-blocker"></div> 
 
-    <!-- IMAGE PREVIEW MODAL WITH LOADER -->
+    <!-- TOAST NOTIFICATION -->
+    <div id="custom-toast">Notification Message</div>
+
+    <!-- IMAGE PREVIEW MODAL -->
     <div id="imageModal" onclick="this.style.display='none'">
         <span class="close-modal">&times;</span>
-        <!-- Spinner -->
-        <div id="modalLoader" class="spinner-border" role="status">
-            <span class="visually-hidden">Loading...</span>
-        </div>
+        <div id="modalLoader" class="spinner-border" role="status"><span class="visually-hidden">Loading...</span></div>
         <img id="modalImg">
     </div>
 
+    <!-- CONFIRM MODAL -->
     <div id="confirmModal">
         <div class="confirm-box">
             <h4 id="modalTitle" class="mb-3 fw-bold text-dark">Confirm</h4>
@@ -148,7 +168,6 @@
                             </div>
                         </div>
                         
-                        <!-- CUSTOM COLLECTION DROPDOWN -->
                         <div class="col-md-4">
                             <label class="form-label fw-bold small text-muted mb-1">Select Collection</label>
                             <div class="dropdown">
@@ -169,7 +188,6 @@
                             <input type="hidden" id="selectedCollectionId">
                         </div>
 
-                        <!-- SORT DROPDOWN -->
                         <div class="col-md-2">
                             <label class="form-label fw-bold small text-muted mb-1">Sort Products</label>
                             <select id="sortSelect" class="form-select form-select-sm" onchange="renderGrid()">
@@ -187,7 +205,6 @@
                         </div>
                     </div>
                     
-                    <!-- QUICK SELECT ROW -->
                     <div class="d-flex justify-content-between mt-3 align-items-center border-top pt-2">
                         <div class="small d-flex align-items-center">
                             <strong class="me-2">Quick Select: </strong>
@@ -240,7 +257,7 @@
         let currentQueryOrId = '';
         
         let globalProducts = [];
-        let globalCollections = []; // Store for filtering
+        let globalCollections = [];
         let pendingInventory = {}; 
 
         window.onload = function() {
@@ -249,25 +266,28 @@
         };
 
         function showLoader(show) {
-            const bar = document.getElementById('ajax-loader-bar');
-            const blocker = document.getElementById('click-blocker');
-            bar.style.display = show ? 'block' : 'none';
-            blocker.style.display = show ? 'block' : 'none';
+            document.getElementById('ajax-loader-bar').style.display = show ? 'block' : 'none';
+            document.getElementById('click-blocker').style.display = show ? 'block' : 'none';
         }
 
-        // --- COLLECTION DROPDOWN LOGIC ---
+        // --- TOAST FUNCTION ---
+        function showToast(message, type = 'success') {
+            const x = document.getElementById("custom-toast");
+            x.className = "show " + type;
+            x.innerText = message;
+            setTimeout(function(){ x.className = x.className.replace("show", ""); }, 3000);
+        }
+
+        // --- FETCH & FILTER LOGIC ---
         function filterCollectionList() {
             const filter = document.getElementById('collectionSearchInput').value.toLowerCase();
             const container = document.getElementById('collectionListContainer');
-            container.innerHTML = ""; // Clear current
-
+            container.innerHTML = "";
             const filtered = globalCollections.filter(c => c.title.toLowerCase().includes(filter));
-            
             if(filtered.length === 0) {
                 container.innerHTML = `<div class="p-3 text-center text-muted">No collections found</div>`;
                 return;
             }
-
             filtered.forEach(c => {
                 const div = document.createElement('div');
                 div.className = "dropdown-item";
@@ -282,8 +302,6 @@
             document.getElementById('collectionDropdownBtn').innerHTML = `<span>${title}</span>`;
             initLoadCollection();
         }
-
-        // --- FETCHING LOGIC ---
 
         async function initLoadCollection() {
             const id = document.getElementById('selectedCollectionId').value;
@@ -322,33 +340,27 @@
 
         async function fetchProducts() {
             showLoader(true);
-            
             const payload = { 
                 action: currentMode === 'collection' ? 'getProducts' : 'searchStore',
                 cursor: currentCursor
             };
-            
             if(currentMode === 'collection') payload.collectionId = currentQueryOrId;
             else payload.query = currentQueryOrId;
 
             const result = await callAPI(payload);
-            
             if (result.success) {
                 currentCursor = result.nextCursor;
                 hasMoreData = result.hasNextPage;
-                
                 if(result.products.length > 0) {
                     globalProducts = globalProducts.concat(result.products);
-                    renderGrid(); // Render all with sort
+                    renderGrid(); 
                     document.getElementById('productCount').innerText = globalProducts.length;
                 } else if(globalProducts.length === 0) {
                     document.getElementById('productTableBody').innerHTML = `<tr><td colspan="7" class="text-center py-5 text-muted">No products found.</td></tr>`;
                 }
-
-                const btnContainer = document.getElementById('load-more-container');
-                btnContainer.style.display = hasMoreData ? 'block' : 'none';
+                document.getElementById('load-more-container').style.display = hasMoreData ? 'block' : 'none';
             } else {
-                alert("Error: " + (result.message || "Unknown error"));
+                showToast("Error loading products", "error");
             }
             showLoader(false);
         }
@@ -357,26 +369,20 @@
             const sortMode = document.getElementById('sortSelect').value;
             const tbody = document.getElementById('productTableBody');
             
-            // Sort Global Products
             globalProducts.sort((a, b) => {
-                if (sortMode === 'newest') return 0; // Default backend order (reverse:true)
+                if (sortMode === 'newest') return 0; 
                 if (sortMode === 'oldest') return 0; 
-                
                 if (sortMode === 'active_first') return (a.status === b.status) ? 0 : (a.status === 'active' ? -1 : 1);
                 if (sortMode === 'draft_first') return (a.status === b.status) ? 0 : (a.status === 'draft' ? -1 : 1);
                 return 0;
             });
 
-            // Special handling for Oldest (Reverse the array temporarily for display)
             let displayProducts = [...globalProducts];
-            if (sortMode === 'oldest') {
-                displayProducts.reverse();
-            }
+            if (sortMode === 'oldest') displayProducts.reverse();
 
             const html = displayProducts.map(p => {
                 let thumbSrc = p.image ? p.image.src : 'https://placehold.co/50';
                 let largeSrc = p.image ? p.image.large : 'https://placehold.co/800';
-                
                 let statusClass = p.status === 'active' ? 'status-active' : 'status-draft';
                 let sku = (p.variants && p.variants[0]) ? p.variants[0].sku : '-';
                 
@@ -404,17 +410,14 @@
                         <td class="text-center"><span class="${statusClass}">${p.status.toUpperCase()}</span></td>
                     </tr>`;
             }).join('');
-
             tbody.innerHTML = html;
         }
 
-        // --- QUICK SELECT ---
         function selectByStatus(type) {
             document.querySelectorAll('.product-check').forEach(cb => {
                 const row = cb.closest('tr');
                 const statusSpan = row.querySelector('td:last-child span');
                 const status = statusSpan ? statusSpan.innerText.toLowerCase() : '';
-                
                 if (type === 'all') cb.checked = true;
                 else if (type === 'none') cb.checked = false;
                 else if (type === 'active' && status === 'active') cb.checked = true;
@@ -422,7 +425,6 @@
             });
         }
 
-        // --- INVENTORY & UTILS ---
         function trackInventoryChange(input, invItemId) {
             input.classList.add('inv-dirty');
             pendingInventory[invItemId] = input.value;
@@ -445,9 +447,9 @@
                 });
                 pendingInventory = {};
                 document.getElementById('btnSaveInventory').style.display = 'none';
-                alert("Inventory Saved!");
+                showToast("Inventory Saved!", "success"); // TOAST USED HERE
             } else {
-                alert("Failed: " + JSON.stringify(result));
+                showToast("Failed to save inventory", "error");
             }
             showLoader(false);
         }
@@ -455,52 +457,125 @@
         async function fetchCollections() {
             const result = await callAPI({ action: 'getCollections' });
             if (result.success) {
-                globalCollections = result.collections; // Store globally
-                filterCollectionList(); // Render initial list
+                globalCollections = result.collections;
+                filterCollectionList();
             }
         }
 
-        async function updateStatus(newStatus) {
+        // --- NEW UPDATE STATUS LOGIC (INCLUDES DRAFT + ZERO) ---
+        function initUpdateStatus(status) {
             const checkboxes = document.querySelectorAll('.product-check:checked');
             const ids = Array.from(checkboxes).map(cb => cb.value);
+            const count = ids.length;
+            
+            if(count === 0) return alert("Select products first");
+
+            if(status === 'draft') {
+                // Draft + Zero Logic
+                const msg = `Set ${count} products to DRAFT and Inventory to 0?`;
+                document.getElementById('modalTitle').innerText = "Set Draft & Zero";
+                document.getElementById('confirmMessage').innerText = msg;
+                document.getElementById('confirmYesBtn').onclick = function() { 
+                    executeDraftAndZero(ids); 
+                    closeConfirmModal();
+                };
+                document.getElementById('confirmModal').style.display = 'flex';
+            } else {
+                // Active Logic (Status Only)
+                const msg = `Set ${count} products to ${status.toUpperCase()}?`;
+                document.getElementById('modalTitle').innerText = "Confirm Status";
+                document.getElementById('confirmMessage').innerText = msg;
+                document.getElementById('confirmYesBtn').onclick = function() { 
+                    executeUpdateStatus(ids, status); 
+                    closeConfirmModal();
+                };
+                document.getElementById('confirmModal').style.display = 'flex';
+            }
+        }
+
+        async function executeDraftAndZero(ids) {
             showLoader(true);
-            const result = await callAPI({ action: 'updateStatus', ids: ids, status: newStatus });
-            if (result.success) {
+            
+            // 1. Prepare Inventory Updates (0 for all variants of selected products)
+            let inventoryUpdates = [];
+            ids.forEach(id => {
+               // Find product in global memory to get variant IDs
+               let product = globalProducts.find(p => p.id == id);
+               if(product && product.variants) {
+                   product.variants.forEach(v => {
+                       inventoryUpdates.push({ inventoryItemId: v.inventory_item_id, quantity: 0 });
+                   });
+               }
+            });
+
+            // 2. Call APIs (Inventory First, then Status)
+            // Note: We call inventory update first to ensure they are zeroed before/while moving to draft
+            if(inventoryUpdates.length > 0) {
+                await callAPI({ action: 'updateInventory', updates: inventoryUpdates });
+            }
+            const statusResult = await callAPI({ action: 'updateStatus', ids: ids, status: 'draft' });
+
+            // 3. Update UI
+            if (statusResult.success) {
                 ids.forEach(id => {
                    const checkbox = document.querySelector(`input[value="${id}"]`);
                    if(checkbox) {
                        const row = checkbox.closest('tr');
+                       
+                       // Update Badge
                        const badge = row.querySelector('td:last-child span');
-                       badge.className = newStatus === 'active' ? 'status-active' : 'status-draft';
-                       badge.innerText = newStatus.toUpperCase();
+                       badge.className = 'status-draft';
+                       badge.innerText = 'DRAFT';
+                       
+                       // Update Inventory Inputs to 0 visually
+                       const inputs = row.querySelectorAll('.inv-input');
+                       inputs.forEach(inp => {
+                           inp.value = 0;
+                           // Update global memory too so sorting works correctly
+                           let iid = inp.getAttribute('data-iid');
+                           let prod = globalProducts.find(p => p.id == id);
+                           if(prod) {
+                               let v = prod.variants.find(v => v.inventory_item_id == iid);
+                               if(v) v.inventory_quantity = 0;
+                           }
+                       });
                    }
+                   // Also update global status memory
+                   let prod = globalProducts.find(p => p.id == id);
+                   if(prod) prod.status = 'draft';
                 });
-                renderGrid();
+                renderGrid(); // Re-render to ensure consistency
+                showToast("Draft Set & Inventory Zeroed!", "success");
+            } else {
+                showToast("Error updating status", "error");
             }
             showLoader(false);
         }
 
-        function initUpdateStatus(status) {
-            const count = document.querySelectorAll('.product-check:checked').length;
-            if(count === 0) return alert("Select products first");
-            if(confirm(`Set ${count} products to ${status}?`)) updateStatus(status);
+        async function executeUpdateStatus(ids, newStatus) {
+            showLoader(true);
+            const result = await callAPI({ action: 'updateStatus', ids: ids, status: newStatus });
+            if (result.success) {
+                ids.forEach(id => {
+                    let prod = globalProducts.find(p => p.id == id);
+                    if(prod) prod.status = newStatus;
+                });
+                renderGrid();
+                showToast(`Status updated to ${newStatus.toUpperCase()}`, "success");
+            } else {
+                showToast("Failed to update status", "error");
+            }
+            showLoader(false);
         }
-        
-        // --- UPDATED VIEW IMAGE WITH SPINNER ---
+
         function viewImage(url) { 
             const modal = document.getElementById('imageModal');
             const img = document.getElementById('modalImg');
             const loader = document.getElementById('modalLoader');
-
-            // Show modal, show loader, hide previous image
             modal.style.display = "flex"; 
             loader.style.display = "block";
             img.style.display = "none";
-            
-            // Set source
             img.src = url;
-
-            // When loaded, hide loader and show image
             img.onload = function() {
                 loader.style.display = "none";
                 img.style.display = "block";
