@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Shopify Manager</title>
-    <link rel="icon" type="image/png" href="logo.png">
+    <link rel="icon" type="image/png" href="https://cdn-icons-png.flaticon.com/512/1170/1170679.png">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <style>
@@ -235,6 +235,7 @@
     </div>
 
     <script>
+        // *** REPLACE WITH YOUR WEB APP URL ***
         const GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbzyfwn3QM5HTtkWACf7V6eto14AMrQmRG2zznKaEXyBNmCodqpuQuagVjhv2BweRhkMeg/exec"; 
 
         let currentCursor = null;
@@ -480,9 +481,11 @@
             }
         }
 
+        // --- NEW & IMPROVED DRAFT FUNCTION ---
         async function executeDraftAndZero(ids) {
             showLoader(true);
             
+            // 1. Prepare Inventory Updates
             let inventoryUpdates = [];
             ids.forEach(id => {
                let product = globalProducts.find(p => p.id == id);
@@ -493,39 +496,52 @@
                }
             });
 
+            // 2. Execute Inventory Update First (Critical)
             if(inventoryUpdates.length > 0) {
-                await callAPI({ action: 'updateInventory', updates: inventoryUpdates });
+                const invResult = await callAPI({ action: 'updateInventory', updates: inventoryUpdates });
+                if(!invResult.success) {
+                    showLoader(false);
+                    showToast("Inventory Update Failed. Status not changed.", "error");
+                    return; // Stop if inventory fails
+                }
             }
+
+            // 3. Update Status to Draft
             const statusResult = await callAPI({ action: 'updateStatus', ids: ids, status: 'draft' });
 
             if (statusResult.success) {
+                // 4. Update UI
                 ids.forEach(id => {
+                   // Update Badge
                    const checkbox = document.querySelector(`input[value="${id}"]`);
                    if(checkbox) {
                        const row = checkbox.closest('tr');
-                       
                        const badge = row.querySelector('td:last-child span');
                        badge.className = 'status-draft';
                        badge.innerText = 'DRAFT';
                        
+                       // Update Input Fields visually
                        const inputs = row.querySelectorAll('.inv-input');
                        inputs.forEach(inp => {
                            inp.value = 0;
-                           let iid = inp.getAttribute('data-iid');
-                           let prod = globalProducts.find(p => p.id == id);
-                           if(prod) {
-                               let v = prod.variants.find(v => v.inventory_item_id == iid);
-                               if(v) v.inventory_quantity = 0;
-                           }
+                           inp.classList.remove('inv-dirty'); // Remove dirty flag
                        });
                    }
+                   // Update Global Data
                    let prod = globalProducts.find(p => p.id == id);
-                   if(prod) prod.status = 'draft';
+                   if(prod) {
+                       prod.status = 'draft';
+                       if(prod.variants) prod.variants.forEach(v => v.inventory_quantity = 0);
+                   }
                 });
+                // Clear any pending inventory for these items so "Save" button doesn't reappear
+                inventoryUpdates.forEach(u => delete pendingInventory[u.inventoryItemId]);
+                if(Object.keys(pendingInventory).length === 0) document.getElementById('btnSaveInventory').style.display = 'none';
+
                 renderGrid(); 
                 showToast("Draft Set & Inventory Zeroed!", "success");
             } else {
-                showToast("Error updating status", "error");
+                showToast("Inventory Zeroed, but Status Update Failed", "error");
             }
             showLoader(false);
         }
